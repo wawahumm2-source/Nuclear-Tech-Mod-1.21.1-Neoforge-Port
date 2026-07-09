@@ -22,7 +22,8 @@ import net.neoforged.neoforge.client.model.data.ModelData;
 public class BurnerPressRenderer implements BlockEntityRenderer<BurnerPressBlockEntity> {
     public static final ModelResourceLocation BODY_MODEL = standaloneModel("burner_press_body");
     public static final ModelResourceLocation HEAD_MODEL = standaloneModel("burner_press_head");
-    private static final float HEAD_STROKE = 0.42F;
+    private static final float HEAD_IDLE_LIFT = 0.55F;
+    private static final float HEAD_STROKE = 0.55F;
 
     private final BlockRenderDispatcher blockRenderer;
 
@@ -42,8 +43,8 @@ public class BurnerPressRenderer implements BlockEntityRenderer<BurnerPressBlock
         renderModel(body, modelManager, state, poseStack, bufferSource, packedLight, packedOverlay);
 
         float progress = net.minecraft.util.Mth.lerp(partialTick, blockEntity.getPreviousAnimationProgress(), blockEntity.getAnimationProgress());
-        float headOffset = progress * HEAD_STROKE;
-        poseStack.translate(0.0D, -headOffset, 0.0D);
+        float headOffset = HEAD_IDLE_LIFT - progress * HEAD_STROKE;
+        poseStack.translate(0.0D, headOffset, 0.0D);
         renderModel(head, modelManager, state, poseStack, bufferSource, packedLight, packedOverlay);
         poseStack.popPose();
     }

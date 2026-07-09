@@ -18,8 +18,10 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
 public class BurnerPressMenu extends AbstractContainerMenu {
-    private static final int MACHINE_SLOT_COUNT = BurnerPressBlockEntity.SLOT_COUNT;
-    private static final int PLAYER_INVENTORY_START = MACHINE_SLOT_COUNT;
+    private static final int BACKING_MACHINE_SLOT_COUNT = BurnerPressBlockEntity.SLOT_COUNT;
+    private static final int VISIBLE_MACHINE_SLOT_COUNT = 4;
+    private static final int MAX_SPEED = 400;
+    private static final int PLAYER_INVENTORY_START = VISIBLE_MACHINE_SLOT_COUNT;
     private static final int PLAYER_INVENTORY_END = PLAYER_INVENTORY_START + 27;
     private static final int HOTBAR_END = PLAYER_INVENTORY_END + 9;
 
@@ -27,13 +29,13 @@ public class BurnerPressMenu extends AbstractContainerMenu {
     private final ContainerData data;
 
     public BurnerPressMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new ItemStackHandler(MACHINE_SLOT_COUNT), new SimpleContainerData(5), ContainerLevelAccess.NULL);
+        this(containerId, playerInventory, new ItemStackHandler(BACKING_MACHINE_SLOT_COUNT), new SimpleContainerData(5), ContainerLevelAccess.NULL);
     }
 
     public BurnerPressMenu(int containerId, Inventory playerInventory, IItemHandler itemHandler, ContainerData data, ContainerLevelAccess access) {
         super(HbmMenus.BURNER_PRESS.get(), containerId);
-        if (itemHandler.getSlots() != MACHINE_SLOT_COUNT) {
-            throw new IllegalArgumentException("Burner Press requires exactly " + MACHINE_SLOT_COUNT + " machine slots.");
+        if (itemHandler.getSlots() != BACKING_MACHINE_SLOT_COUNT) {
+            throw new IllegalArgumentException("Burner Press requires exactly " + BACKING_MACHINE_SLOT_COUNT + " backing slots.");
         }
         checkContainerDataCount(data, 5);
         this.access = access;
@@ -43,9 +45,6 @@ public class BurnerPressMenu extends AbstractContainerMenu {
         this.addSlot(new StampSlot(itemHandler, BurnerPressBlockEntity.SLOT_STAMP, 80, 17));
         this.addSlot(new SlotItemHandler(itemHandler, BurnerPressBlockEntity.SLOT_INPUT, 80, 53));
         this.addSlot(new OutputSlot(itemHandler, BurnerPressBlockEntity.SLOT_OUTPUT, 140, 35));
-        for (int slot = BurnerPressBlockEntity.SLOT_TEMPLATE_START; slot < BurnerPressBlockEntity.SLOT_COUNT; slot++) {
-            this.addSlot(new SlotItemHandler(itemHandler, slot, 8 + (slot - BurnerPressBlockEntity.SLOT_TEMPLATE_START) * 18, 84));
-        }
         addPlayerInventory(playerInventory);
         addPlayerHotbar(playerInventory);
         this.addDataSlots(data);
@@ -71,6 +70,22 @@ public class BurnerPressMenu extends AbstractContainerMenu {
         return this.data.get(4);
     }
 
+    public int getScaledSpeed(int scale) {
+        int speed = getSpeed();
+        if (speed <= 0) {
+            return 0;
+        }
+        return Math.max(1, Math.min(scale, speed * scale / MAX_SPEED));
+    }
+
+    public int getSpeedPercent() {
+        return getSpeed() * 100 / MAX_SPEED;
+    }
+
+    public int getStoredOperations() {
+        return getBurnTime() / getBurnCost();
+    }
+
     public int getScaledProgress(int width) {
         int max = getMaxProgress();
         return max <= 0 ? 0 : getProgress() * width / max;
@@ -94,7 +109,7 @@ public class BurnerPressMenu extends AbstractContainerMenu {
             ItemStack rawStack = quickMovedSlot.getItem();
             quickMovedStack = rawStack.copy();
 
-            if (index < MACHINE_SLOT_COUNT) {
+            if (index < VISIBLE_MACHINE_SLOT_COUNT) {
                 if (!this.moveItemStackTo(rawStack, PLAYER_INVENTORY_START, HOTBAR_END, true)) {
                     return ItemStack.EMPTY;
                 }
