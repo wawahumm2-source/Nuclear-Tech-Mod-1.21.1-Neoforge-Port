@@ -24,6 +24,7 @@ public final class HbmItems {
     public static final DeferredItem<BlockItem> RADIOACTIVE_WASTE_BARREL = ITEMS.register("radioactive_waste_barrel",
             () -> new RadioactiveBlockItem(HbmBlocks.RADIOACTIVE_WASTE_BARREL.get(), new Item.Properties(), 0.20D));
     public static final DeferredItem<BlockItem> BURNER_PRESS = ITEMS.registerSimpleBlockItem("burner_press", HbmBlocks.BURNER_PRESS);
+    public static final DeferredItem<BlockItem> PRESS_PREHEATER = ITEMS.registerSimpleBlockItem("press_preheater", HbmBlocks.PRESS_PREHEATER);
     public static final DeferredItem<BlockItem> PROTOTYPE_NUKE = ITEMS.register("prototype_nuke",
             () -> new RadioactiveBlockItem(HbmBlocks.PROTOTYPE_NUKE.get(), new Item.Properties(), 0.35D));
 
