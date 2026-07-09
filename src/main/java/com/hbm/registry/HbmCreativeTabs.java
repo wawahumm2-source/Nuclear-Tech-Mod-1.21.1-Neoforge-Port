@@ -41,7 +41,10 @@ public final class HbmCreativeTabs {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MACHINE = CREATIVE_TABS.register("machine", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.tabMachine"))
             .icon(() -> HbmItems.BURNER_PRESS.get().getDefaultInstance())
-            .displayItems((parameters, output) -> output.accept(HbmItems.BURNER_PRESS.get()))
+            .displayItems((parameters, output) -> {
+                output.accept(HbmItems.BURNER_PRESS.get());
+                output.accept(HbmItems.PRESS_PREHEATER.get());
+            })
             .build());
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> NUKE = CREATIVE_TABS.register("nuke", () -> CreativeModeTab.builder()
