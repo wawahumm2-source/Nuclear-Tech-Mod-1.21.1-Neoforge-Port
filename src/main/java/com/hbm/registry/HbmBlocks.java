@@ -39,6 +39,13 @@ public final class HbmBlocks {
                     .sound(SoundType.METAL)
                     .noOcclusion()));
 
+    public static final DeferredBlock<Block> PRESS_PREHEATER = BLOCKS.register("press_preheater",
+            () -> new Block(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .requiresCorrectToolForDrops()
+                    .strength(4F, 8F)
+                    .sound(SoundType.METAL)));
+
     public static final DeferredBlock<Block> PROTOTYPE_NUKE = BLOCKS.register("prototype_nuke",
             () -> new PrototypeNukeBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_RED)
