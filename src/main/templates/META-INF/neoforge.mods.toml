@@ -1,0 +1,60 @@
+# NeoForge mod metadata for Hbm's Nuclear Tech.
+# This file is expanded from gradle.properties during the build.
+
+modLoader="javafml" #mandatory
+
+loaderVersion="${loader_version_range}" #mandatory
+
+license="${mod_license}"
+
+issueTrackerURL="https://github.com/wawahumm2-source/Nuclear-Tech-Mod-1.21.1-Neoforge-Port/issues" #optional
+
+[[mods]] #mandatory
+
+modId="${mod_id}" #mandatory
+
+version="${mod_version}" #mandatory
+
+displayName="${mod_name}" #mandatory
+
+#updateJSONURL="https://github.com/wawahumm2-source/Nuclear-Tech-Mod-1.21.1-Neoforge-Port/releases/latest" #optional
+
+displayURL="https://github.com/wawahumm2-source/Nuclear-Tech-Mod-1.21.1-Neoforge-Port" #optional
+
+#logoFile="hbm.png" #optional
+
+credits="${mod_credits}" #optional
+
+authors="${mod_authors}"
+
+description='''
+${mod_description}
+'''
+
+# The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
+#[[mixins]]
+#config="${mod_id}.mixins.json"
+
+# The [[accessTransformers]] block allows you to declare where your AT file is.
+# If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
+#[[accessTransformers]]
+#file="META-INF/accesstransformer.cfg"
+
+# The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
+
+[[dependencies.${mod_id}]] #optional
+    modId="neoforge" #mandatory
+    type="required" #mandatory
+    versionRange="[${neo_version},)" #mandatory
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+#[features.${mod_id}]
+#openGLVersion="[3.2,)"

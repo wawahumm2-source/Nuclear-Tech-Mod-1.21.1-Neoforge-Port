@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "hbm:radioactive_waste_barrel"
+        }
+      ],
+      "rolls": 1
+    }
+  ]
+}

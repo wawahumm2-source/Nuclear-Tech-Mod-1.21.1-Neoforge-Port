@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "hbm:block/radioactive_waste_barrel" }
+  }
+}

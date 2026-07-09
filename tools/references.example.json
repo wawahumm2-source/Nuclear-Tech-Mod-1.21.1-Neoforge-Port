@@ -1,0 +1,47 @@
+{
+  "original_source": {
+    "label": "Original HBM 1.7.10 source - canonical gameplay authority",
+    "path": "C:\\path\\to\\Hbm-s-Nuclear-Tech-GIT-master.zip",
+    "kind": "zip"
+  },
+  "original_jar": {
+    "label": "Original HBM 1.7.10 jar - packaged asset/runtime authority",
+    "path": "C:\\path\\to\\HBM-NTM-[version].jar",
+    "kind": "jar"
+  },
+  "reloaded": {
+    "label": "HBM Reloaded 1.12.2 - primary migration reference",
+    "path": "C:\\path\\to\\Hbm-s-Nuclear-Tech-GIT-Custom-1.12.2.zip",
+    "kind": "zip"
+  },
+  "waldemar": {
+    "label": "HBM Waldemar Edition 1.12.2 - secondary parity and engineering reference",
+    "path": "C:\\path\\to\\Hbm-s-Nuclear-Tech-Waldemar-Edition-Custom-1.12.2.zip",
+    "kind": "zip"
+  },
+  "rebirth": {
+    "label": "HBM NTM Rebirth 1.20.1 - secondary parity reference",
+    "path": "C:\\path\\to\\hbm_ntm_rebirth.jar",
+    "kind": "jar"
+  },
+  "neo_edition": {
+    "label": "HBM Neo Edition 1.21.1 - NeoForge implementation reference",
+    "path": "C:\\path\\to\\HBMsNTM-NEO-EDITION-master.zip",
+    "kind": "zip"
+  },
+  "well_forged": {
+    "label": "HBM Well-Forged 1.12.2 - engineering and optimization reference",
+    "path": "C:\\path\\to\\NTM-Well-forged-Edition.jar",
+    "kind": "jar"
+  },
+  "modernized": {
+    "label": "HBM Modernized 1.20.1 - architecture reference",
+    "path": "C:\\path\\to\\HBM-Modernized-main.zip",
+    "kind": "zip"
+  },
+  "current_port": {
+    "label": "Current 1.21.1 NeoForge port - implementation target, not authority",
+    "path": "C:\\path\\to\\Nuclear-Tech-Mod-1.21.1-Neoforge-Port",
+    "kind": "dir"
+  }
+}

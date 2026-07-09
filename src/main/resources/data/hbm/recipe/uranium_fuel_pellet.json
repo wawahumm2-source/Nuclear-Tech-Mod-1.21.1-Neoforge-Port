@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "hbm:graphite_ingot"
+    },
+    "U": {
+      "item": "hbm:uranium_ingot"
+    }
+  },
+  "pattern": [
+    " G ",
+    "GUG",
+    " G "
+  ],
+  "result": {
+    "count": 1,
+    "id": "hbm:uranium_fuel_pellet"
+  }
+}

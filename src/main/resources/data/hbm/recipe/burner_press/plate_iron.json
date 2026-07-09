@@ -1,0 +1,11 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "minecraft:iron_ingot"
+  },
+  "stamp": "plate",
+  "processing_time": 200,
+  "result": {
+    "id": "hbm:plate_iron"
+  }
+}

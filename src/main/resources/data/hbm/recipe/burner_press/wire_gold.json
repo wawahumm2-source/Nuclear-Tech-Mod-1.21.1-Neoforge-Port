@@ -1,0 +1,12 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "minecraft:gold_ingot"
+  },
+  "stamp": "wire",
+  "processing_time": 200,
+  "result": {
+    "id": "hbm:wire_gold",
+    "count": 8
+  }
+}

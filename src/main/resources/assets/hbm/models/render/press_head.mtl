@@ -1,0 +1,3 @@
+newmtl press_head
+Kd 1.0 1.0 1.0
+map_Kd hbm:block/press_head

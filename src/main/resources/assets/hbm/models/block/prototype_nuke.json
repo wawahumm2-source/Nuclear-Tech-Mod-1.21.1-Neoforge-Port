@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "hbm:block/det_nuke",
+    "down": "hbm:block/det_nuke",
+    "up": "hbm:block/det_nuke_top",
+    "north": "hbm:block/det_nuke",
+    "south": "hbm:block/det_nuke",
+    "east": "hbm:block/det_nuke",
+    "west": "hbm:block/det_nuke"
+  }
+}
