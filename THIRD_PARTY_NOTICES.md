@@ -34,6 +34,8 @@ File-local copyright or license notices from NEO EDITION remain controlling and 
 
 No Superb Warfare model, texture, animation, sound, or other asset may be imported into this repository without explicit authorization from its rights holder and a corresponding update to this notice. This restriction applies even when an asset is present in a public source tree or compiled JAR.
 
+For manual side-by-side review only, `Quick Load Latest Build.bat` verifies and stages the user's separately supplied Superb Warfare `0.8.9` jar into the ignored `run-client-comparison/mods` development directory. That external jar and its assets are not copied into HBM source, used by normal automated test runs, or packaged in an HBM artifact.
+
 The dependency baseline does not bundle Superb Warfare. The following source files contain
 GPL-3.0-covered code adaptations from the exact commit above and identify that provenance in
 file-local comments:

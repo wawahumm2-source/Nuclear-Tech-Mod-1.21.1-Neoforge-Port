@@ -37,6 +37,7 @@ bin/
 run/
 run-client-smoke/
 run-client-verification/
+run-client-comparison/
 run-client-nuclear-performance/
 run-data/
 run-server-smoke/

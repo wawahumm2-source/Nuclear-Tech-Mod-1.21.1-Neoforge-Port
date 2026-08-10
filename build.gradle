@@ -101,6 +101,15 @@ neoForge {
             disableIdeRun()
         }
 
+        // Isolated manual-review client. Quick Load stages the user's exact Superb Warfare
+        // reference jar here so side-by-side testing cannot contaminate normal runs or GameTests.
+        clientComparison {
+            client()
+            gameDirectory = project.file('run-client-comparison')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            disableIdeRun()
+        }
+
         // Isolated fresh-world environment for profiling large nuclear jobs without contaminating review saves.
         clientNuclearPerformance {
             client()

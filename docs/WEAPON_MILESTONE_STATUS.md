@@ -37,7 +37,7 @@ This ledger separates implemented code from verified behavior. The first four-gu
 
 ## Quick Load
 
-Double-click `Quick Load Latest Build.bat` in the project root to launch the current workspace build. `Quick View Latest Build.bat` remains as a backwards-compatible alias. Both use `tools/quick-view-latest-build.ps1`, which discovers and verifies Java 21 from the project-local toolchain, `JAVA_HOME`, `PATH`, or common Windows JDK locations before invoking `gradlew runClient`.
+Double-click `Quick Load Latest Build.bat` in the project root to launch an isolated comparison client containing the current HBM workspace build and the supplied Superb Warfare `0.8.9` reference at commit `9b5284f4`. `Quick View Latest Build.bat` remains as a backwards-compatible alias. Both use `tools/quick-view-latest-build.ps1`, which verifies Java 21 and the exact external Superb Warfare jar hash, stages that jar only under the ignored `run-client-comparison/mods` directory, and invokes `gradlew runClientComparison`. The comparison jar is never included in HBM source, normal test runs, or the packaged HBM jar.
 
 Pass `-InfoOnly` from a terminal to verify the detected Java and latest jar without launching Minecraft. Pass `-RebuildFirst` to force a complete build before launch.
 

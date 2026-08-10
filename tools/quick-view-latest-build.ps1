@@ -8,6 +8,10 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $gradleWrapper = Join-Path $projectRoot "gradlew.bat"
 $buildLibs = Join-Path $projectRoot "build\libs"
+$comparisonGameDirectory = Join-Path $projectRoot "run-client-comparison"
+$comparisonModsDirectory = Join-Path $comparisonGameDirectory "mods"
+$managedSuperbJar = Join-Path $comparisonModsDirectory "superbwarfare-0.8.9-final-mc1.21.1-9b5284f4.jar"
+$expectedSuperbHash = "1a648d19104ef8c485c539edaf4795553c6ee8d5a624fb59aca5d86f4b0297c9"
 
 function Test-Java21 {
     param([string]$JavaPath)
@@ -97,6 +101,51 @@ function Get-LatestBuildJar {
         Select-Object -First 1
 }
 
+function Find-SuperbWarfareJar {
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if (![string]::IsNullOrWhiteSpace($env:SUPERB_WARFARE_JAR)) {
+        $candidates.Add($env:SUPERB_WARFARE_JAR)
+    }
+    if (![string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $candidates.Add((Join-Path $env:USERPROFILE "Downloads\superbwarfare-0.8.9-final-mc1.21.1-9b5284f4.jar"))
+    }
+
+    foreach ($candidate in $candidates) {
+        if (!(Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            continue
+        }
+        $resolved = (Resolve-Path -LiteralPath $candidate).Path
+        $hash = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($hash -ne $expectedSuperbHash) {
+            throw "Superb Warfare comparison jar has unexpected SHA-256: $resolved ($hash)"
+        }
+        return $resolved
+    }
+    return $null
+}
+
+function Stage-SuperbWarfareJar {
+    param([string]$SourceJar)
+
+    New-Item -ItemType Directory -Force -Path $comparisonModsDirectory | Out-Null
+    $conflicts = @(Get-ChildItem -LiteralPath $comparisonModsDirectory -Filter "*.jar" -File |
+        Where-Object {
+            $_.FullName -ne $managedSuperbJar -and $_.Name -match '(?i)^superbwarfare'
+        })
+    if ($conflicts.Count -gt 0) {
+        throw "Another Superb Warfare jar is already in the isolated comparison mods folder: $($conflicts[0].FullName)"
+    }
+
+    $stagedHash = if (Test-Path -LiteralPath $managedSuperbJar -PathType Leaf) {
+        (Get-FileHash -LiteralPath $managedSuperbJar -Algorithm SHA256).Hash.ToLowerInvariant()
+    } else {
+        $null
+    }
+    if ($stagedHash -ne $expectedSuperbHash) {
+        Copy-Item -LiteralPath $SourceJar -Destination $managedSuperbJar -Force
+    }
+}
+
 $javaExe = Find-Java21
 if (!$javaExe) {
     Write-Host "Java 21 was not found." -ForegroundColor Red
@@ -113,11 +162,21 @@ if (!(Test-Path $gradleWrapper)) {
 }
 
 $latestJar = Get-LatestBuildJar
+$superbJar = Find-SuperbWarfareJar
+if (!$superbJar) {
+    Write-Host "Superb Warfare comparison jar was not found." -ForegroundColor Red
+    Write-Host "Expected the exact 9b5284f4 build at:"
+    Write-Host "  $env:USERPROFILE\Downloads\superbwarfare-0.8.9-final-mc1.21.1-9b5284f4.jar"
+    Write-Host "Alternatively set SUPERB_WARFARE_JAR to that file."
+    exit 1
+}
 
 Write-Host ""
 Write-Host "HBM Nuclear Tech - Quick View Latest Build" -ForegroundColor Cyan
 Write-Host "Project: $projectRoot"
 Write-Host "Java:    $javaHome"
+Write-Host "Compare: Superb Warfare 0.8.9, commit 9b5284f4"
+Write-Host "Source:  $superbJar"
 
 if ($latestJar) {
     Write-Host "Latest:  $($latestJar.Name) ($(Format-FileSize $latestJar.Length), $($latestJar.LastWriteTime))"
@@ -142,10 +201,13 @@ if ($RebuildFirst -or !$latestJar) {
     }
 }
 
+Stage-SuperbWarfareJar $superbJar
+
 Write-Host ""
-Write-Host "Launching Minecraft client with the current workspace build..." -ForegroundColor Cyan
+Write-Host "Launching isolated HBM + Superb Warfare comparison client..." -ForegroundColor Cyan
+Write-Host "Comparison directory: $comparisonGameDirectory"
 Write-Host "Close Minecraft when you are finished reviewing the build."
 Write-Host ""
 
-& $gradleWrapper runClient
+& $gradleWrapper runClientComparison
 exit $LASTEXITCODE
