@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "family": "hbm:g12",
+  "projectile_mode": "trajectory",
+  "damage_multiplier": 4.2,
+  "armor_penetration": 0.38,
+  "pellet_count": 1,
+  "spread_multiplier": 0.18,
+  "gravity": 0.015,
+  "drag": 0.01,
+  "explosion": null,
+  "impact_effect": "hbm:shotgun_slug",
+  "tracer_color": "FFB85A"
+}

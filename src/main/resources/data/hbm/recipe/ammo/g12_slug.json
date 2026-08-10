@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "item": "hbm:slug_lead"
+    },
+    "G": {
+      "item": "minecraft:gunpowder"
+    },
+    "C": {
+      "item": "hbm:casing_shotshell"
+    }
+  },
+  "pattern": [
+    "P",
+    "G",
+    "C"
+  ],
+  "result": {
+    "count": 1,
+    "id": "hbm:g12_slug"
+  }
+}

@@ -29,12 +29,24 @@ public final class HbmSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> MUKE_EXPLOSION = register("weapon.mukeexplosion");
     public static final DeferredHolder<SoundEvent, SoundEvent> NUCLEAR_EXPLOSION = register("weapon.nuclearexplosion");
 
-    public static void register(IEventBus eventBus) {
-        SOUND_EVENTS.register(eventBus);
+    public static final DeferredHolder<SoundEvent, SoundEvent> FIRE_PISTOL_LIGHT = register("weapon.fire.pistollight");
+    public static final DeferredHolder<SoundEvent, SoundEvent> FIRE_ASSAULT = register("weapon.fire.assault");
+    public static final DeferredHolder<SoundEvent, SoundEvent> FIRE_SHOTGUN = register("weapon.shotgunshoot");
+    public static final DeferredHolder<SoundEvent, SoundEvent> FIRE_GRENADE = register("weapon.glshoot");
+    public static final DeferredHolder<SoundEvent, SoundEvent> DRY_FIRE = register("weapon.reload.dryfireclick");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG_SMALL = register("weapon.reload.magsmallinsert");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG = register("weapon.reload.maginsert");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_SHOTGUN = register("weapon.reload.shotgunreload");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ACTION_SHOTGUN = register("weapon.reload.shotguncock");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_GRENADE = register("weapon.glreload");
+
+    private static DeferredHolder<SoundEvent, SoundEvent> register(String id) {
+        return SOUND_EVENTS.register(id, () -> SoundEvent.createVariableRangeEvent(
+                ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID, id)));
     }
 
-    private static DeferredHolder<SoundEvent, SoundEvent> register(String name) {
-        return SOUND_EVENTS.register(name, () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID, name)));
+    public static void register(IEventBus eventBus) {
+        SOUND_EVENTS.register(eventBus);
     }
 
     private HbmSounds() {

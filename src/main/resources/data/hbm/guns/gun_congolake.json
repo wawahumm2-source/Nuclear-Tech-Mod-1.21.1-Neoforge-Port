@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "ammo_family": "hbm:g40",
+  "supported_ammo": ["hbm:g40_he", "hbm:g40_heat"],
+  "fire_modes": ["semi"],
+  "default_fire_mode": "semi",
+  "rpm": 52,
+  "ads": {
+    "fov_multiplier": 0.74,
+    "movement_multiplier": 0.56,
+    "sensitivity_multiplier": 0.65
+  },
+  "movement_weight": 0.58,
+  "spread": {
+    "hip_degrees": 4.4,
+    "ads_degrees": 0.85,
+    "movement_degrees": 2.1
+  },
+  "recoil": {
+    "pitch": 7.0,
+    "yaw": 1.5,
+    "recovery_per_tick": 0.22
+  },
+  "magazine": {
+    "capacity": 4,
+    "uses_chamber": true
+  },
+  "reload": {
+    "style": "per_round",
+    "start_ticks": 12,
+    "transfer_ticks": 0,
+    "loop_ticks": 22,
+    "end_ticks": 14
+  },
+  "damage": 7.0,
+  "headshot_multiplier": 1.0,
+  "velocity": 1.55,
+  "range": 128.0,
+  "behavior": "hbm:grenade_launcher",
+  "sounds": {
+    "fire": "hbm:weapon.glshoot",
+    "dry_fire": "hbm:weapon.reload.dryfireclick",
+    "reload": "hbm:weapon.glreload"
+  },
+  "animations": {
+    "equip": "hbm:animations/weapon/congolake.animation.json#equip",
+    "idle": "hbm:animations/weapon/congolake.animation.json#idle",
+    "ads": "hbm:animations/weapon/congolake.animation.json#ads",
+    "fire": "hbm:animations/weapon/congolake.animation.json#fire",
+    "dry_fire": "hbm:animations/weapon/congolake.animation.json#dry_fire",
+    "reload_start": "hbm:animations/weapon/congolake.animation.json#reload_start",
+    "reload_loop": "hbm:animations/weapon/congolake.animation.json#reload_loop",
+    "reload_end": "hbm:animations/weapon/congolake.animation.json#reload_end",
+    "inspect": "hbm:animations/weapon/congolake.animation.json#inspect",
+    "sprint": "hbm:animations/weapon/congolake.animation.json#sprint",
+    "lower": "hbm:animations/weapon/congolake.animation.json#lower"
+  }
+}

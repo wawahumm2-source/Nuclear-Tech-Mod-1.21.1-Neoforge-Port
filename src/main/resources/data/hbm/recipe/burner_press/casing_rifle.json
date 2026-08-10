@@ -1,0 +1,12 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "hbm:plate_steel"
+  },
+  "stamp": "c357",
+  "processing_time": 120,
+  "result": {
+    "id": "hbm:casing_rifle",
+    "count": 6
+  }
+}

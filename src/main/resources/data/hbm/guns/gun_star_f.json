@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "ammo_family": "hbm:p22",
+  "supported_ammo": ["hbm:p22_fmj", "hbm:p22_ap"],
+  "fire_modes": ["semi"],
+  "default_fire_mode": "semi",
+  "rpm": 420,
+  "ads": {
+    "fov_multiplier": 0.82,
+    "movement_multiplier": 0.78,
+    "sensitivity_multiplier": 0.76
+  },
+  "movement_weight": 0.12,
+  "spread": {
+    "hip_degrees": 2.4,
+    "ads_degrees": 0.45,
+    "movement_degrees": 1.2
+  },
+  "recoil": {
+    "pitch": 1.65,
+    "yaw": 0.55,
+    "recovery_per_tick": 0.24
+  },
+  "magazine": {
+    "capacity": 10,
+    "uses_chamber": true
+  },
+  "reload": {
+    "style": "magazine",
+    "start_ticks": 7,
+    "transfer_ticks": 21,
+    "loop_ticks": 0,
+    "end_ticks": 8
+  },
+  "damage": 5.0,
+  "headshot_multiplier": 1.8,
+  "velocity": 5.5,
+  "range": 96.0,
+  "behavior": "hbm:standard",
+  "sounds": {
+    "fire": "hbm:weapon.fire.pistollight",
+    "dry_fire": "hbm:weapon.reload.dryfireclick",
+    "reload": "hbm:weapon.reload.magsmallinsert"
+  },
+  "animations": {
+    "equip": "hbm:animations/weapon/star_f.animation.json#equip",
+    "idle": "hbm:animations/weapon/star_f.animation.json#idle",
+    "ads": "hbm:animations/weapon/star_f.animation.json#ads",
+    "fire": "hbm:animations/weapon/star_f.animation.json#fire",
+    "dry_fire": "hbm:animations/weapon/star_f.animation.json#dry_fire",
+    "reload_start": "hbm:animations/weapon/star_f.animation.json#reload_start",
+    "reload_loop": "hbm:animations/weapon/star_f.animation.json#reload_loop",
+    "reload_end": "hbm:animations/weapon/star_f.animation.json#reload_end",
+    "inspect": "hbm:animations/weapon/star_f.animation.json#inspect",
+    "sprint": "hbm:animations/weapon/star_f.animation.json#sprint",
+    "lower": "hbm:animations/weapon/star_f.animation.json#lower"
+  }
+}

@@ -6,11 +6,37 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class HbmClientConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final Client CLIENT = new Client(BUILDER);
+
+    public static final ModConfigSpec.DoubleValue RECOIL_CAMERA_SCALE;
+    public static final ModConfigSpec.DoubleValue SCREEN_SHAKE_SCALE;
+    public static final ModConfigSpec.BooleanValue CASING_PARTICLES;
+    public static final ModConfigSpec.BooleanValue TRACERS;
+    public static final ModConfigSpec.DoubleValue ADS_SENSITIVITY_SCALE;
+
+    static {
+        BUILDER.comment("Client-only presentation and accessibility settings for HBM firearms.").push("weapons");
+        RECOIL_CAMERA_SCALE = BUILDER
+                .comment("Camera recoil strength. Zero disables camera rotation without changing server spread.")
+                .defineInRange("recoilCameraScale", 1.0D, 0.0D, 2.0D);
+        SCREEN_SHAKE_SCALE = BUILDER
+                .comment("Screenshake strength from gunfire and explosive impacts. Zero disables it.")
+                .defineInRange("screenShakeScale", 0.65D, 0.0D, 2.0D);
+        CASING_PARTICLES = BUILDER
+                .comment("Render local casing-ejection particles.")
+                .define("casingParticles", true);
+        TRACERS = BUILDER
+                .comment("Render approved server trajectory tracer events.")
+                .define("tracers", true);
+        ADS_SENSITIVITY_SCALE = BUILDER
+                .comment("Additional multiplier applied to each gun's ADS mouse sensitivity.")
+                .defineInRange("adsSensitivityScale", 1.0D, 0.1D, 2.0D);
+        BUILDER.pop();
+    }
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private HbmClientConfig() {
     }
-
     public enum NuclearVisualQuality {
         FULL,
         REDUCED,

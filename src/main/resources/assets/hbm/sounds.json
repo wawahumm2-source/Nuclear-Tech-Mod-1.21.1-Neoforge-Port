@@ -1166,6 +1166,7 @@
   },
   "weapon.shotgunshoot": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.fire.shotgun",
     "sounds": [
       {
         "name": "hbm:weapon/shotgunshoot",
@@ -1913,6 +1914,7 @@
   },
   "weapon.glreload": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload",
     "sounds": [
       {
         "name": "hbm:weapon/glreload",
@@ -1922,6 +1924,7 @@
   },
   "weapon.glshoot": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.fire.grenade",
     "sounds": [
       {
         "name": "hbm:weapon/glshoot",
@@ -2166,6 +2169,7 @@
   },
   "weapon.fire.assault": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.fire.rifle",
     "sounds": [
       "hbm:weapon/fire/assault"
     ]
@@ -2251,6 +2255,7 @@
   },
   "weapon.fire.pistollight": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.fire.pistol",
     "sounds": [
       "hbm:weapon/fire/pistollight"
     ]
@@ -2275,6 +2280,7 @@
   },
   "weapon.reload.dryfireclick": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.dry_fire",
     "sounds": [
       "hbm:weapon/reload/dryfireclick"
     ]
@@ -2311,6 +2317,7 @@
   },
   "weapon.reload.maginsert": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload",
     "sounds": [
       "hbm:weapon/reload/maginsert"
     ]
@@ -2323,6 +2330,7 @@
   },
   "weapon.reload.magsmallinsert": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload",
     "sounds": [
       "hbm:weapon/reload/magsmallinsert"
     ]
@@ -2377,6 +2385,7 @@
   },
   "weapon.reload.shotguncock": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload",
     "sounds": [
       "hbm:weapon/reload/shotguncock"
     ]
@@ -2395,6 +2404,7 @@
   },
   "weapon.reload.shotgunreload": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload",
     "sounds": [
       "hbm:weapon/reload/shotgunreload1",
       "hbm:weapon/reload/shotgunreload2",

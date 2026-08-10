@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "item": "hbm:projectile_steel_rifle"
+    },
+    "G": {
+      "item": "minecraft:gunpowder"
+    },
+    "C": {
+      "item": "hbm:casing_rifle"
+    }
+  },
+  "pattern": [
+    "P",
+    "G",
+    "C"
+  ],
+  "result": {
+    "count": 1,
+    "id": "hbm:r556_ap"
+  }
+}

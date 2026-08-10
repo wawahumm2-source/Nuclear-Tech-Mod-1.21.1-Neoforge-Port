@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "family": "hbm:r556",
+  "projectile_mode": "trajectory",
+  "damage_multiplier": 0.9,
+  "armor_penetration": 0.72,
+  "pellet_count": 1,
+  "spread_multiplier": 0.96,
+  "gravity": 0.006,
+  "drag": 0.0025,
+  "explosion": null,
+  "impact_effect": "hbm:armor_piercing",
+  "tracer_color": "CDEBFF"
+}

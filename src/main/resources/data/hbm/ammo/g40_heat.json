@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "family": "hbm:g40",
+  "projectile_mode": "entity",
+  "damage_multiplier": 0.72,
+  "armor_penetration": 0.95,
+  "pellet_count": 1,
+  "spread_multiplier": 0.92,
+  "gravity": 0.043,
+  "drag": 0.009,
+  "explosion": {
+    "power": 2.6,
+    "block_damage": true,
+    "shaped_charge": true
+  },
+  "impact_effect": "hbm:grenade_heat",
+  "tracer_color": "FFF3B0"
+}

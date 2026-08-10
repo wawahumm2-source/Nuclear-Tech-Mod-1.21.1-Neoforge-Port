@@ -1,0 +1,12 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "hbm:plate_steel"
+  },
+  "stamp": "c50",
+  "processing_time": 120,
+  "result": {
+    "id": "hbm:casing_40mm",
+    "count": 2
+  }
+}

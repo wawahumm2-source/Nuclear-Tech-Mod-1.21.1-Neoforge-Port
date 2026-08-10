@@ -1,0 +1,12 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "hbm:steel_ingot"
+  },
+  "stamp": "c50",
+  "processing_time": 120,
+  "result": {
+    "id": "hbm:projectile_40mm_he",
+    "count": 2
+  }
+}

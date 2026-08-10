@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "ammo_family": "hbm:r556",
+  "supported_ammo": ["hbm:r556_fmj", "hbm:r556_ap"],
+  "fire_modes": ["semi", "auto"],
+  "default_fire_mode": "semi",
+  "rpm": 650,
+  "ads": {
+    "fov_multiplier": 0.72,
+    "movement_multiplier": 0.66,
+    "sensitivity_multiplier": 0.67
+  },
+  "movement_weight": 0.34,
+  "spread": {
+    "hip_degrees": 3.1,
+    "ads_degrees": 0.32,
+    "movement_degrees": 1.65
+  },
+  "recoil": {
+    "pitch": 1.85,
+    "yaw": 0.68,
+    "recovery_per_tick": 0.2
+  },
+  "magazine": {
+    "capacity": 30,
+    "uses_chamber": true
+  },
+  "reload": {
+    "style": "magazine",
+    "start_ticks": 8,
+    "transfer_ticks": 28,
+    "loop_ticks": 0,
+    "end_ticks": 10
+  },
+  "damage": 6.5,
+  "headshot_multiplier": 1.75,
+  "velocity": 8.0,
+  "range": 192.0,
+  "behavior": "hbm:standard",
+  "sounds": {
+    "fire": "hbm:weapon.fire.assault",
+    "dry_fire": "hbm:weapon.reload.dryfireclick",
+    "reload": "hbm:weapon.reload.maginsert"
+  },
+  "animations": {
+    "equip": "hbm:animations/weapon/stg77.animation.json#equip",
+    "idle": "hbm:animations/weapon/stg77.animation.json#idle",
+    "ads": "hbm:animations/weapon/stg77.animation.json#ads",
+    "fire": "hbm:animations/weapon/stg77.animation.json#fire",
+    "dry_fire": "hbm:animations/weapon/stg77.animation.json#dry_fire",
+    "reload_start": "hbm:animations/weapon/stg77.animation.json#reload_start",
+    "reload_loop": "hbm:animations/weapon/stg77.animation.json#reload_loop",
+    "reload_end": "hbm:animations/weapon/stg77.animation.json#reload_end",
+    "inspect": "hbm:animations/weapon/stg77.animation.json#inspect",
+    "sprint": "hbm:animations/weapon/stg77.animation.json#sprint",
+    "lower": "hbm:animations/weapon/stg77.animation.json#lower"
+  }
+}

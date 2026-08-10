@@ -23,6 +23,7 @@ public final class HbmConfig {
     public static final ModConfigSpec.DoubleValue RADAWAY_REDUCTION = RADIATION.radawayReduction;
     public static final ModConfigSpec.IntValue BURNER_PRESS_PROCESS_TICKS = MACHINES.burnerPressProcessTicks;
     public static final ModConfigSpec.IntValue PROTOTYPE_NUKE_RADIUS = BOMBS.prototypeNukeTerrainRadius;
+    public static final ModConfigSpec.BooleanValue GRENADE_BLOCK_DAMAGE = WEAPONS.grenadeBlockDamage;
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 
@@ -401,8 +402,13 @@ public final class HbmConfig {
     }
 
     public static final class Weapons {
+        public final ModConfigSpec.BooleanValue grenadeBlockDamage;
+
         private Weapons(ModConfigSpec.Builder builder) {
-            builder.comment("Weapon behavior. No active weapon config has been ported yet.").push("weapons");
+            builder.comment("Server-authoritative HBM weapon behavior.").push("weapons");
+            this.grenadeBlockDamage = builder
+                    .comment("Whether Congo Lake HE/HEAT explosions may damage blocks when the ammo profile permits it.")
+                    .define("grenadeBlockDamage", true);
             builder.pop();
         }
     }

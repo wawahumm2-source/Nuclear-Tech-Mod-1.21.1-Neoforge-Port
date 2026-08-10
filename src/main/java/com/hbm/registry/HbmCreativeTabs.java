@@ -74,6 +74,25 @@ public final class HbmCreativeTabs {
             })
             .build());
 
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> WEAPONS = CREATIVE_TABS.register("weapons", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.tabWeapons"))
+            .icon(() -> HbmItems.GUN_STG77.get().getDefaultInstance())
+            .displayItems((parameters, output) -> {
+                output.accept(HbmItems.GUN_STAR_F.get());
+                output.accept(HbmItems.GUN_STG77.get());
+                output.accept(HbmItems.GUN_SPAS12.get());
+                output.accept(HbmItems.GUN_CONGOLAKE.get());
+                output.accept(HbmItems.P22_FMJ.get());
+                output.accept(HbmItems.P22_AP.get());
+                output.accept(HbmItems.R556_FMJ.get());
+                output.accept(HbmItems.R556_AP.get());
+                output.accept(HbmItems.G12_BUCKSHOT.get());
+                output.accept(HbmItems.G12_SLUG.get());
+                output.accept(HbmItems.G40_HE.get());
+                output.accept(HbmItems.G40_HEAT.get());
+            })
+            .build());
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> NUKE = CREATIVE_TABS.register("nuke", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.tabNuke"))
             .icon(() -> HbmItems.PROTOTYPE_NUKE.get().getDefaultInstance())
@@ -98,6 +117,18 @@ public final class HbmCreativeTabs {
                 output.accept(HbmItems.PLATE_LEAD.get());
                 output.accept(HbmItems.WIRE_GOLD.get());
                 output.accept(HbmItems.GEM_RAD.get());
+                output.accept(HbmItems.CASING_SMALL.get());
+                output.accept(HbmItems.CASING_RIFLE.get());
+                output.accept(HbmItems.CASING_SHOTSHELL.get());
+                output.accept(HbmItems.CASING_40MM.get());
+                output.accept(HbmItems.PROJECTILE_LEAD_SMALL.get());
+                output.accept(HbmItems.PROJECTILE_STEEL_SMALL.get());
+                output.accept(HbmItems.PROJECTILE_LEAD_RIFLE.get());
+                output.accept(HbmItems.PROJECTILE_STEEL_RIFLE.get());
+                output.accept(HbmItems.PELLETS_LEAD.get());
+                output.accept(HbmItems.SLUG_LEAD.get());
+                output.accept(HbmItems.PROJECTILE_40MM_HE.get());
+                output.accept(HbmItems.PROJECTILE_40MM_HEAT.get());
             })
             .build());
 

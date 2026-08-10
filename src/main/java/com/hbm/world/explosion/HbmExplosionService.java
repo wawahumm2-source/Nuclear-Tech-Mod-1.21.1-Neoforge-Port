@@ -123,6 +123,32 @@ public final class HbmExplosionService {
         level.explode(owner, x, y, z, profile.terrainStrength(), Level.ExplosionInteraction.TNT);
     }
 
+    public static void detonateProjectile(ServerLevel level, Vec3 position, Entity projectile,
+                                          @Nullable Entity owner, float power, boolean damageBlocks,
+                                          ResourceLocation clientEffect) {
+        Level.ExplosionInteraction interaction = damageBlocks
+                ? Level.ExplosionInteraction.TNT
+                : Level.ExplosionInteraction.NONE;
+        level.explode(
+                projectile,
+                HbmDamageTypes.projectileExplosion(level, projectile, owner),
+                null,
+                position,
+                power,
+                false,
+                interaction
+        );
+        PacketDistributor.sendToPlayersNear(
+                level,
+                null,
+                position.x,
+                position.y,
+                position.z,
+                Math.max(64.0D, power * 16.0D),
+                new ClientEffectPayload(clientEffect, position.x, position.y, position.z, Math.round(power))
+        );
+    }
+
     public static void detonate(ServerLevel level, BlockPos pos, @Nullable Entity owner, HbmExplosionProfile profile) {
         level.removeBlock(pos, false);
         if (profile.mode() == HbmExplosionMode.VANILLA) {

@@ -3,6 +3,8 @@ package com.hbm.registry;
 import com.hbm.HbmNuclearTech;
 import com.hbm.item.GeigerCounterItem;
 import com.hbm.item.FalloutInjectorItem;
+import com.hbm.item.HbmAmmoItem;
+import com.hbm.item.HbmGunItem;
 import com.hbm.item.RadAwayItem;
 import com.hbm.item.RadXItem;
 import com.hbm.item.RadioactiveBlockItem;
@@ -17,6 +19,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -104,6 +107,34 @@ public final class HbmItems {
             () -> new FalloutInjectorItem(new Item.Properties().stacksTo(1)));
     public static final DeferredItem<Item> RADIATION_PULSE = ITEMS.register("dev_radiation_pulse",
             () -> new RadiationPulseItem(new Item.Properties().stacksTo(1)));
+
+    public static final DeferredItem<Item> CASING_SMALL = ITEMS.registerSimpleItem("casing_small");
+    public static final DeferredItem<Item> CASING_RIFLE = ITEMS.registerSimpleItem("casing_rifle");
+    public static final DeferredItem<Item> CASING_SHOTSHELL = ITEMS.registerSimpleItem("casing_shotshell");
+    public static final DeferredItem<Item> CASING_40MM = ITEMS.registerSimpleItem("casing_40mm");
+    public static final DeferredItem<Item> PROJECTILE_LEAD_SMALL = ITEMS.registerSimpleItem("projectile_lead_small");
+    public static final DeferredItem<Item> PROJECTILE_STEEL_SMALL = ITEMS.registerSimpleItem("projectile_steel_small");
+    public static final DeferredItem<Item> PROJECTILE_LEAD_RIFLE = ITEMS.registerSimpleItem("projectile_lead_rifle");
+    public static final DeferredItem<Item> PROJECTILE_STEEL_RIFLE = ITEMS.registerSimpleItem("projectile_steel_rifle");
+    public static final DeferredItem<Item> PELLETS_LEAD = ITEMS.registerSimpleItem("pellets_lead");
+    public static final DeferredItem<Item> SLUG_LEAD = ITEMS.registerSimpleItem("slug_lead");
+    public static final DeferredItem<Item> PROJECTILE_40MM_HE = ITEMS.registerSimpleItem("projectile_40mm_he");
+    public static final DeferredItem<Item> PROJECTILE_40MM_HEAT = ITEMS.registerSimpleItem("projectile_40mm_heat");
+
+    // The four pilot guns intentionally share one implementation; behavior is definition-driven.
+    public static final DeferredItem<HbmGunItem> GUN_STAR_F = registerGun("gun_star_f", "star_f", "star_f");
+    public static final DeferredItem<HbmGunItem> GUN_STG77 = registerGun("gun_stg77", "stg77", "stg77");
+    public static final DeferredItem<HbmGunItem> GUN_SPAS12 = registerGun("gun_spas12", "spas-12", "spas12");
+    public static final DeferredItem<HbmGunItem> GUN_CONGOLAKE = registerGun("gun_congolake", "congolake", "congolake");
+
+    public static final DeferredItem<HbmAmmoItem> P22_FMJ = registerAmmo("p22_fmj", 64);
+    public static final DeferredItem<HbmAmmoItem> P22_AP = registerAmmo("p22_ap", 64);
+    public static final DeferredItem<HbmAmmoItem> R556_FMJ = registerAmmo("r556_fmj", 64);
+    public static final DeferredItem<HbmAmmoItem> R556_AP = registerAmmo("r556_ap", 64);
+    public static final DeferredItem<HbmAmmoItem> G12_BUCKSHOT = registerAmmo("g12_buckshot", 32);
+    public static final DeferredItem<HbmAmmoItem> G12_SLUG = registerAmmo("g12_slug", 32);
+    public static final DeferredItem<HbmAmmoItem> G40_HE = registerAmmo("g40_he", 16);
+    public static final DeferredItem<HbmAmmoItem> G40_HEAT = registerAmmo("g40_heat", 16);
     public static final DeferredItem<Item> STAMP_FLAT = registerStamp("stamp_flat", StampType.FLAT);
     public static final DeferredItem<Item> STAMP_PLATE = registerStamp("stamp_plate", StampType.PLATE);
     public static final DeferredItem<Item> STAMP_WIRE = registerStamp("stamp_wire", StampType.WIRE);
@@ -123,6 +154,23 @@ public final class HbmItems {
 
     private static DeferredItem<Item> registerStamp(String name, StampType stampType) {
         return ITEMS.register(name, () -> new StampItem(new Item.Properties().stacksTo(1).durability(100), stampType));
+    }
+
+    private static DeferredItem<HbmGunItem> registerGun(String name, String modelName, String animationName) {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID, name);
+        ResourceLocation model = ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID,
+                "models/weapons/" + modelName + ".obj");
+        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID,
+                "textures/models/weapons/" + modelName + ".png");
+        ResourceLocation animation = ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID,
+                "animations/weapon/" + animationName + ".animation.json");
+        return ITEMS.register(name, () -> new HbmGunItem(
+                new Item.Properties().stacksTo(1), id, model, texture, animation));
+    }
+
+    private static DeferredItem<HbmAmmoItem> registerAmmo(String name, int stackSize) {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID, name);
+        return ITEMS.register(name, () -> new HbmAmmoItem(new Item.Properties().stacksTo(stackSize), id));
     }
 
     public static void register(IEventBus eventBus) {

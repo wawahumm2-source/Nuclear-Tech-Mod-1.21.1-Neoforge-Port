@@ -2,6 +2,8 @@
 
 The port target is one-to-one parity with the original HBM Nuclear Tech Mod wherever Minecraft 1.21.1 and NeoForge allow it.
 
+Firearms are the documented exception: preserve their HBM identity and progression, but use the approved modern handling and server-authority decisions in `docs/FIREARMS_PARITY_DIVERGENCE.md`. This exception must not be interpreted as permission to import Superb Warfare visual or audio assets.
+
 ## Source Of Truth
 
 - Canonical hierarchy: `docs/CANONICAL_REFERENCE_HIERARCHY.md`

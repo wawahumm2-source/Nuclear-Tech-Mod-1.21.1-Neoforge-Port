@@ -8,6 +8,7 @@ import com.hbm.registry.HbmBlocks;
 import com.hbm.registry.HbmAttachments;
 import com.hbm.registry.HbmCapabilities;
 import com.hbm.registry.HbmCreativeTabs;
+import com.hbm.registry.HbmDataComponents;
 import com.hbm.registry.HbmEntities;
 import com.hbm.registry.HbmFluids;
 import com.hbm.registry.HbmHazards;
@@ -36,6 +37,8 @@ public final class HbmNuclearTech {
 
     public HbmNuclearTech(IEventBus modEventBus, ModContainer modContainer) {
         HbmBlocks.register(modEventBus);
+        HbmDataComponents.register(modEventBus);
+        HbmAttachments.register(modEventBus);
         HbmItems.register(modEventBus);
         HbmBlockEntities.register(modEventBus);
         HbmMenus.register(modEventBus);
@@ -44,7 +47,6 @@ public final class HbmNuclearTech {
         HbmEntities.register(modEventBus);
         HbmFluids.register(modEventBus);
         HbmCreativeTabs.register(modEventBus);
-        HbmAttachments.register(modEventBus);
         HbmParticles.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);

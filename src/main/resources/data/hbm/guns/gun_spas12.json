@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "ammo_family": "hbm:g12",
+  "supported_ammo": ["hbm:g12_buckshot", "hbm:g12_slug"],
+  "fire_modes": ["semi"],
+  "default_fire_mode": "semi",
+  "rpm": 78,
+  "ads": {
+    "fov_multiplier": 0.78,
+    "movement_multiplier": 0.62,
+    "sensitivity_multiplier": 0.72
+  },
+  "movement_weight": 0.46,
+  "spread": {
+    "hip_degrees": 5.8,
+    "ads_degrees": 3.0,
+    "movement_degrees": 2.25
+  },
+  "recoil": {
+    "pitch": 5.4,
+    "yaw": 1.35,
+    "recovery_per_tick": 0.26
+  },
+  "magazine": {
+    "capacity": 8,
+    "uses_chamber": true
+  },
+  "reload": {
+    "style": "per_round",
+    "start_ticks": 9,
+    "transfer_ticks": 0,
+    "loop_ticks": 13,
+    "end_ticks": 11
+  },
+  "damage": 2.25,
+  "headshot_multiplier": 1.35,
+  "velocity": 4.8,
+  "range": 72.0,
+  "behavior": "hbm:standard",
+  "sounds": {
+    "fire": "hbm:weapon.shotgunshoot",
+    "dry_fire": "hbm:weapon.reload.dryfireclick",
+    "reload": "hbm:weapon.reload.shotgunreload",
+    "action": "hbm:weapon.reload.shotguncock"
+  },
+  "animations": {
+    "equip": "hbm:animations/weapon/spas12.animation.json#equip",
+    "idle": "hbm:animations/weapon/spas12.animation.json#idle",
+    "ads": "hbm:animations/weapon/spas12.animation.json#ads",
+    "fire": "hbm:animations/weapon/spas12.animation.json#fire",
+    "dry_fire": "hbm:animations/weapon/spas12.animation.json#dry_fire",
+    "reload_start": "hbm:animations/weapon/spas12.animation.json#reload_start",
+    "reload_loop": "hbm:animations/weapon/spas12.animation.json#reload_loop",
+    "reload_end": "hbm:animations/weapon/spas12.animation.json#reload_end",
+    "inspect": "hbm:animations/weapon/spas12.animation.json#inspect",
+    "sprint": "hbm:animations/weapon/spas12.animation.json#sprint",
+    "lower": "hbm:animations/weapon/spas12.animation.json#lower"
+  }
+}

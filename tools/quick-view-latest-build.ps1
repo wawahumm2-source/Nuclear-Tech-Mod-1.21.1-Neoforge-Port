@@ -6,13 +6,70 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$javaHome = @(
-    (Join-Path $projectRoot ".tooling\jdk-21\jdk-21.0.11+10"),
-    (Join-Path $projectRoot "tools\jdk21-download\jdk-21.0.11+10")
-) | Where-Object { Test-Path -LiteralPath (Join-Path $_ "bin\java.exe") } | Select-Object -First 1
-$javaExe = if ($javaHome) { Join-Path $javaHome "bin\java.exe" } else { $null }
 $gradleWrapper = Join-Path $projectRoot "gradlew.bat"
 $buildLibs = Join-Path $projectRoot "build\libs"
+
+function Test-Java21 {
+    param([string]$JavaPath)
+
+    if ([string]::IsNullOrWhiteSpace($JavaPath) -or !(Test-Path -LiteralPath $JavaPath -PathType Leaf)) {
+        return $false
+    }
+
+    $previousErrorPreference = $ErrorActionPreference
+    try {
+        # java -version writes its normal version banner to stderr.
+        $ErrorActionPreference = "Continue"
+        $versionText = (& $JavaPath -version 2>&1 | Out-String)
+        return $versionText -match '\bversion\s+"21(?:\.|"|\s)'
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $previousErrorPreference
+    }
+}
+
+function Find-Java21 {
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    $localJdkRoot = Join-Path $projectRoot ".tooling\jdk-21"
+    $candidates.Add((Join-Path $localJdkRoot "bin\java.exe"))
+    if (Test-Path -LiteralPath $localJdkRoot -PathType Container) {
+        Get-ChildItem -LiteralPath $localJdkRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object { $candidates.Add((Join-Path $_.FullName "bin\java.exe")) }
+    }
+
+    if (![string]::IsNullOrWhiteSpace($env:JAVA_HOME)) {
+        $candidates.Add((Join-Path $env:JAVA_HOME "bin\java.exe"))
+    }
+
+    $pathJava = Get-Command java.exe -ErrorAction SilentlyContinue
+    if ($pathJava) {
+        $candidates.Add($pathJava.Source)
+    }
+
+    foreach ($vendorRoot in @(
+        (Join-Path $env:ProgramFiles "Eclipse Adoptium"),
+        (Join-Path $env:ProgramFiles "Microsoft"),
+        (Join-Path $env:ProgramFiles "Java")
+    )) {
+        if (!(Test-Path -LiteralPath $vendorRoot -PathType Container)) {
+            continue
+        }
+        Get-ChildItem -LiteralPath $vendorRoot -Directory -Filter "jdk-21*" -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object { $candidates.Add((Join-Path $_.FullName "bin\java.exe")) }
+    }
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($candidate in $candidates) {
+        if ($seen.Add($candidate) -and (Test-Java21 $candidate)) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+    return $null
+}
 
 function Format-FileSize {
     param([long]$Bytes)
@@ -40,12 +97,14 @@ function Get-LatestBuildJar {
         Select-Object -First 1
 }
 
-if (!$javaHome) {
-    Write-Host "Java 21 was not found in either supported workspace location:" -ForegroundColor Red
-    Write-Host "  .tooling\jdk-21\jdk-21.0.11+10"
-    Write-Host "  tools\jdk21-download\jdk-21.0.11+10"
+$javaExe = Find-Java21
+if (!$javaExe) {
+    Write-Host "Java 21 was not found." -ForegroundColor Red
+    Write-Host "Install a Java 21 JDK, set JAVA_HOME, add java.exe to PATH, or place it under:"
+    Write-Host "  $projectRoot\.tooling\jdk-21"
     exit 1
 }
+$javaHome = Split-Path -Parent (Split-Path -Parent $javaExe)
 
 if (!(Test-Path $gradleWrapper)) {
     Write-Host "Gradle wrapper was not found at:" -ForegroundColor Red

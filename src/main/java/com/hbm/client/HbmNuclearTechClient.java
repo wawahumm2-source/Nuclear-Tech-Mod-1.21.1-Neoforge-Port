@@ -9,6 +9,7 @@ import com.hbm.client.particle.NuclearCloudParticle;
 import com.hbm.client.render.BurnerPressRenderer;
 import com.hbm.client.render.BurnerPressItemRenderer;
 import com.hbm.client.screen.BurnerPressScreen;
+import com.hbm.client.weapon.render.ObjBakedGeoModelLoader;
 import com.hbm.network.HbmPayloads;
 import com.hbm.registry.HbmBlockEntities;
 import com.hbm.registry.HbmBlocks;
@@ -17,6 +18,8 @@ import com.hbm.registry.HbmFluids;
 import com.hbm.registry.HbmItems;
 import com.hbm.registry.HbmMenus;
 import com.hbm.registry.HbmParticles;
+import net.minecraft.client.renderer.entity.ThrownItemRenderer;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -25,6 +28,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
@@ -71,6 +75,7 @@ public final class HbmNuclearTechClient {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(HbmBlockEntities.BURNER_PRESS.get(), BurnerPressRenderer::new);
         event.registerEntityRenderer(HbmEntities.HBM_TNT.get(), TntRenderer::new);
+        event.registerEntityRenderer(HbmEntities.BALLISTIC_PROJECTILE.get(), ThrownItemRenderer::new);
     }
 
     @SubscribeEvent
@@ -161,6 +166,11 @@ public final class HbmNuclearTechClient {
         int green = Math.round(((color >> 8) & 0xFF) * CONTAMINATED_WATER_BRIGHTNESS);
         int blue = Math.round((color & 0xFF) * CONTAMINATED_WATER_BRIGHTNESS);
         return 0xFF000000 | (red << 16) | (green << 8) | blue;
+    }
+
+    @SubscribeEvent
+    public static void registerClientReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((ResourceManagerReloadListener) ObjBakedGeoModelLoader::clearCache);
     }
 
     private HbmNuclearTechClient() {

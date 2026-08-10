@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.141'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.20'
     id 'idea'
 }
 
@@ -28,6 +29,28 @@ sourceSets.main.resources {
 
 repositories {
     // Add here additional repositories if required by some of the dependencies below.
+    mavenCentral()
+    maven {
+        name = 'Kotlin for Forge'
+        url = 'https://thedarkcolour.github.io/KotlinForForge/'
+        content {
+            includeGroup('thedarkcolour')
+        }
+    }
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content {
+            includeGroup('software.bernie.geckolib')
+        }
+    }
+    maven {
+        name = 'Curios'
+        url = 'https://maven.theillusivec4.top/'
+        content {
+            includeGroup('top.theillusivec4.curios')
+        }
+    }
     maven {
         name = 'BlameJared'
         url = 'https://maven.blamejared.com'
@@ -40,6 +63,7 @@ base {
 
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+kotlin.jvmToolchain(21)
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -139,6 +163,13 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    // Give JUnit the same transformed Minecraft/NeoForge runtime used by the mod.
+    // testedMod also exposes test classes to FML's module classloader.
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 // Sets up a dependency configuration called 'localRuntime'.
@@ -150,9 +181,17 @@ configurations {
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.11.4')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Required foundations for the modern firearm framework. These coordinates
+    // match Superb Warfare 0.8.9 commit 9b5284f4 without depending on that mod.
+    implementation "thedarkcolour:kotlinforforge-neoforge:${kotlin_for_forge_version}"
+    implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
+    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+    runtimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
     // JEI is optional: compile against the API and load the full mod only in local runs.
     def localJeiRuntime = file("libs/jei-1.21.1-neoforge-19.32.0.359.jar")
     if (localJeiRuntime.exists()) {

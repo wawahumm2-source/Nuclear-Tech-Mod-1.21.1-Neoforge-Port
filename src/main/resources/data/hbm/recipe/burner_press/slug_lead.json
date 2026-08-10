@@ -1,0 +1,12 @@
+{
+  "type": "hbm:burner_press",
+  "ingredient": {
+    "item": "hbm:lead_ingot"
+  },
+  "stamp": "c44",
+  "processing_time": 120,
+  "result": {
+    "id": "hbm:slug_lead",
+    "count": 4
+  }
+}

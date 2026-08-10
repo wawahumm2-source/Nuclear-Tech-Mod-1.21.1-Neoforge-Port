@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "hbm:gunfire",
+    "hbm:headshot",
+    "hbm:armor_piercing"
+  ]
+}
