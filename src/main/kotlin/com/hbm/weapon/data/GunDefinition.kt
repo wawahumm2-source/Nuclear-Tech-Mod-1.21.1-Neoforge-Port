@@ -60,6 +60,7 @@ data class GunDefinition(
         val startTicks: Int,
         val transferTicks: Int,
         val loopTicks: Int,
-        val endTicks: Int
+        val endTicks: Int,
+        val emptyEndTicks: Int
     )
 }

@@ -247,7 +247,8 @@ public final class HbmWeaponService {
         session.setReload(ReloadPhase.START, held.definition().getReload().getStartTicks());
         ResourceLocation sound = soundFor(held.definition(), "reload_remove", "reload");
         playSound(player, sound, 0.8F, 1.0F);
-        emit(player, held.definition(), WeaponEffectType.RELOAD_START, sound, 0.0F, 0.0F, 0);
+        emit(player, held.definition(), WeaponEffectType.RELOAD_START, sound,
+                0.0F, 0.0F, state.ammoCount() == 0 ? 1 : 0);
     }
 
     private static void tickReload(ServerPlayer player, HeldGun held, WeaponSession session) {
@@ -277,7 +278,8 @@ public final class HbmWeaponService {
             case TRANSFER -> {
                 boolean needsAction = currentState(held.stack(), held.definition()).ammoCount() == 0;
                 boolean inserted = transferMagazine(player, held);
-                session.setReload(ReloadPhase.END, reload.getEndTicks());
+                session.setReload(ReloadPhase.END,
+                        needsAction ? reload.getEmptyEndTicks() : reload.getEndTicks());
                 ResourceLocation insertSound = soundFor(held.definition(), "reload_insert", "reload");
                 if (inserted) {
                     playSound(player, insertSound, 0.8F, 1.0F);

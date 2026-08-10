@@ -21,6 +21,19 @@ class WeaponDefinitionParserTest {
         assertEquals(8, WeaponTestFixtures.allAmmo().size());
         assertEquals(1200.0D / 650.0D,
                 WeaponTestFixtures.gun("gun_stg77").getShotIntervalTicks(), 1.0E-9D);
+        GunDefinition.ReloadProfile pistolReload = WeaponTestFixtures.gun("gun_star_f").getReload();
+        assertEquals(20, pistolReload.getEndTicks());
+        assertEquals(28, pistolReload.getEmptyEndTicks());
+    }
+
+    @Test
+    void emptyReloadTimingDefaultsToNormalEndTiming() {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("hbm", "gun_star_f");
+        JsonObject definition = WeaponTestFixtures.json("/data/hbm/guns/gun_star_f.json");
+        definition.getAsJsonObject("reload").remove("empty_end_ticks");
+
+        GunDefinition.ReloadProfile reload = WeaponDefinitionParser.parseGun(id, definition).getReload();
+        assertEquals(reload.getEndTicks(), reload.getEmptyEndTicks());
     }
 
     @Test

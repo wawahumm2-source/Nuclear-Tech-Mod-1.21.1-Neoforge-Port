@@ -24,7 +24,7 @@ Superb Warfare is a behavioral and GPL code reference only. Its models, textures
 
 | Weapon | HBM identity source | Modern handling baseline | Required ammunition |
 | --- | --- | --- | --- |
-| Target Pistol | Original HBM | M1911-style semi-auto | .22 LR FMJ, .22 LR AP |
+| Target Pistol | Original HBM | MP-443-style semi-auto presentation and handling | .22 LR FMJ, .22 LR AP |
 | StG 77 | Original HBM | AK-47-style semi/automatic | 5.56 FMJ, 5.56 AP |
 | SPAS-12 | Original HBM fallback; the supplied Neo archive has no SPAS set | M870-style pump and interruptible shell loading | 12-gauge buckshot, 12-gauge slug |
 | Congo Lake | Original HBM | M79-style arc with the HBM four-round sequential model | 40mm HE, 40mm HEAT |

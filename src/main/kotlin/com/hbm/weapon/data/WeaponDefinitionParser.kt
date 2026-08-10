@@ -41,7 +41,9 @@ object WeaponDefinitionParser {
         val magazine = json.requiredObject("magazine")
         requireOnly(magazine, setOf("capacity", "uses_chamber"))
         val reload = json.requiredObject("reload")
-        requireOnly(reload, setOf("style", "start_ticks", "transfer_ticks", "loop_ticks", "end_ticks"))
+        requireOnly(reload, setOf(
+            "style", "start_ticks", "transfer_ticks", "loop_ticks", "end_ticks", "empty_end_ticks"
+        ))
 
         val definition = GunDefinition(
             schema = CURRENT_SCHEMA,
@@ -78,7 +80,8 @@ object WeaponDefinitionParser {
                 reload.requiredInt("start_ticks"),
                 reload.requiredInt("transfer_ticks"),
                 reload.requiredInt("loop_ticks"),
-                reload.requiredInt("end_ticks")
+                reload.requiredInt("end_ticks"),
+                reload.optionalInt("empty_end_ticks", reload.requiredInt("end_ticks"))
             ),
             baseDamage = json.requiredFloat("damage"),
             headshotMultiplier = json.requiredFloat("headshot_multiplier"),
@@ -141,7 +144,8 @@ object WeaponDefinitionParser {
         require(definition.spread.hipDegrees >= 0.0 && definition.spread.adsDegrees >= 0.0) { "spread cannot be negative" }
         require(definition.recoil.pitch >= 0.0 && definition.recoil.yaw >= 0.0) { "recoil cannot be negative" }
         require(definition.reload.startTicks >= 0 && definition.reload.transferTicks >= 0 &&
-            definition.reload.loopTicks >= 0 && definition.reload.endTicks >= 0) { "reload timings cannot be negative" }
+            definition.reload.loopTicks >= 0 && definition.reload.endTicks >= 0 &&
+            definition.reload.emptyEndTicks >= 0) { "reload timings cannot be negative" }
         require(definition.reload.style != ReloadStyle.PER_ROUND || definition.reload.loopTicks > 0) {
             "per_round reloads require a positive loop_ticks value"
         }

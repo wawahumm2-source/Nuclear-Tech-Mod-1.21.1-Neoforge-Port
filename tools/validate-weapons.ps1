@@ -550,7 +550,8 @@ function Validate-GunDefinition {
     $reload = Get-ObjectField $Json 'reload' $Scope
     if ($null -ne $reload) {
         $reloadFields = @('style', 'start_ticks', 'transfer_ticks', 'loop_ticks', 'end_ticks')
-        Assert-Fields $reload $reloadFields $reloadFields "$Scope.reload"
+        $allowedReloadFields = $reloadFields + @('empty_end_ticks')
+        Assert-Fields $reload $reloadFields $allowedReloadFields "$Scope.reload"
         $style = Get-StringField $reload 'style' "$Scope.reload"
         if ($null -ne $style -and $style.ToLowerInvariant() -notin @('magazine', 'per_round')) {
             Add-ValidationError "$Scope.reload.style contains unsupported value '$style'."
@@ -559,11 +560,17 @@ function Validate-GunDefinition {
         $transferTicks = Get-IntegerField $reload 'transfer_ticks' "$Scope.reload"
         $loopTicks = Get-IntegerField $reload 'loop_ticks' "$Scope.reload"
         $endTicks = Get-IntegerField $reload 'end_ticks' "$Scope.reload"
+        $emptyEndTicks = if (Test-HasProperty $reload 'empty_end_ticks') {
+            Get-IntegerField $reload 'empty_end_ticks' "$Scope.reload"
+        } else {
+            $endTicks
+        }
         foreach ($timing in @(
             @{ Name = 'start_ticks'; Value = $startTicks },
             @{ Name = 'transfer_ticks'; Value = $transferTicks },
             @{ Name = 'loop_ticks'; Value = $loopTicks },
-            @{ Name = 'end_ticks'; Value = $endTicks }
+            @{ Name = 'end_ticks'; Value = $endTicks },
+            @{ Name = 'empty_end_ticks'; Value = $emptyEndTicks }
         )) {
             if ($null -ne $timing.Value -and $timing.Value -lt 0) {
                 Add-ValidationError "$Scope.reload.$($timing.Name) cannot be negative."
@@ -924,9 +931,12 @@ function Validate-PilotRuntimeAssets {
     if (-not (Test-Path -LiteralPath $rendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'HbmMuzzleFlashRenderer.render' -Quiet) -or
         -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'HbmPlayerArmRenderer.render' -Quiet) -or
-        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'poseStack.translate(-0.5D, -0.51D, -0.5D)' -Quiet) -or
         -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'virtualBone.pivot()' -Quiet)) {
         Add-ValidationError 'The gun renderer is not bound to its model-local arms and muzzle effects.'
+    }
+    if ((Test-Path -LiteralPath $rendererSource -PathType Leaf) -and
+        (Select-String -LiteralPath $rendererSource -SimpleMatch 'poseStack.translate(-0.5D, -0.51D, -0.5D)' -Quiet)) {
+        Add-ValidationError 'The gun renderer contains the rejected first-person centering translation that hides the viewmodel below the hotbar.'
     }
     if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'player.getSkin().texture()' -Quiet)) {

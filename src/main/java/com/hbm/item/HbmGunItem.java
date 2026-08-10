@@ -65,7 +65,8 @@ public final class HbmGunItem extends Item implements GeoItem {
         controller.triggerableAnim("sprint", RawAnimation.begin().thenLoop("sprint"));
         controller.triggerableAnim("lower", RawAnimation.begin().thenPlayAndHold("lower"));
         for (String animation : new String[]{
-                "equip", "fire", "dry_fire", "reload_start", "reload_loop", "reload_end", "inspect"
+                "equip", "fire", "dry_fire", "reload_start", "reload_loop", "reload_end",
+                "reload_normal", "reload_empty", "inspect"
         }) {
             controller.triggerableAnim(animation, RawAnimation.begin().thenPlay(animation));
         }

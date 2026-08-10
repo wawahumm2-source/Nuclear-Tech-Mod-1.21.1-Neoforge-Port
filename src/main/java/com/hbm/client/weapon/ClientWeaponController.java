@@ -24,6 +24,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -56,6 +57,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @EventBusSubscriber(modid = HbmNuclearTech.MOD_ID, value = Dist.CLIENT)
 public final class ClientWeaponController {
+    private static final ResourceLocation TARGET_PISTOL = ResourceLocation.fromNamespaceAndPath(
+            HbmNuclearTech.MOD_ID, "gun_star_f");
+    private static final float TARGET_PISTOL_FOV = 0.82F;
+    private static final double TARGET_PISTOL_SENSITIVITY = 0.76D;
     private static final String CATEGORY = "key.categories.hbm.weapons";
     private static final KeyMapping RELOAD = key("key.hbm.reload", GLFW.GLFW_KEY_R);
     private static final KeyMapping FIRE_MODE = key("key.hbm.fire_mode", GLFW.GLFW_KEY_B);
@@ -168,21 +173,28 @@ public final class ClientWeaponController {
 
     @SubscribeEvent
     public static void modifyFov(ComputeFovModifierEvent event) {
-        if (authoritativeState != null && adsBlend > 0.001F) {
-            float multiplier = Mth.lerp(adsBlend, 1.0F, authoritativeState.adsFovMultiplier());
+        Minecraft minecraft = Minecraft.getInstance();
+        if (isHoldingGun(minecraft) && adsBlend > 0.001F) {
+            float target = authoritativeState == null
+                    ? TARGET_PISTOL_FOV : authoritativeState.adsFovMultiplier();
+            float multiplier = Mth.lerp(easeInOutQuint(adsBlend), 1.0F, target);
             event.setNewFovModifier(event.getNewFovModifier() * multiplier);
         }
     }
 
     @SubscribeEvent
     public static void shakeCamera(ViewportEvent.ComputeCameraAngles event) {
-        if (screenShake <= 0.001F) {
-            return;
-        }
         double time = Minecraft.getInstance().level == null ? 0.0D : Minecraft.getInstance().level.getGameTime();
-        event.setPitch(event.getPitch() + (float) Math.sin(time * 2.31D) * screenShake);
-        event.setYaw(event.getYaw() + (float) Math.cos(time * 1.73D) * screenShake * 0.7F);
-        event.setRoll(event.getRoll() + (float) Math.sin(time * 1.17D) * screenShake * 0.35F);
+        float firePitch = (float) Math.sin(time * 2.31D) * screenShake;
+        float fireYaw = (float) Math.cos(time * 1.73D) * screenShake * 0.7F;
+        float fireRoll = (float) Math.sin(time * 1.17D) * screenShake * 0.35F;
+        float reloadScale = HbmClientConfig.SCREEN_SHAKE_SCALE.get().floatValue();
+        event.setPitch(event.getPitch() + firePitch
+                + SuperbGunPresentationState.reloadCameraPitch() * reloadScale);
+        event.setYaw(event.getYaw() + fireYaw
+                + SuperbGunPresentationState.reloadCameraYaw() * reloadScale);
+        event.setRoll(event.getRoll() + fireRoll
+                + SuperbGunPresentationState.reloadCameraRoll() * reloadScale);
     }
 
     @SubscribeEvent
@@ -267,9 +279,27 @@ public final class ClientWeaponController {
                 predictedAnimationTicks = 0;
                 triggerAnimation(source, "dry_fire");
             }
-            case RELOAD_START -> triggerAnimation(source, "reload_start");
-            case RELOAD_INSERT -> triggerAnimation(source, "reload_loop");
-            case RELOAD_END -> triggerAnimation(source, "reload_end");
+            case RELOAD_START -> {
+                if (TARGET_PISTOL.equals(payload.gunId())) {
+                    boolean empty = payload.variant() != 0;
+                    triggerAnimation(source, empty ? "reload_empty" : "reload_normal");
+                    if (local) {
+                        SuperbGunPresentationState.beginReload(empty);
+                    }
+                } else {
+                    triggerAnimation(source, "reload_start");
+                }
+            }
+            case RELOAD_INSERT -> {
+                if (!TARGET_PISTOL.equals(payload.gunId())) {
+                    triggerAnimation(source, "reload_loop");
+                }
+            }
+            case RELOAD_END -> {
+                if (!TARGET_PISTOL.equals(payload.gunId())) {
+                    triggerAnimation(source, "reload_end");
+                }
+            }
             default -> {
             }
         }
@@ -366,13 +396,14 @@ public final class ClientWeaponController {
     }
 
     private static void updateAdsSensitivity(Minecraft minecraft, boolean ads) {
-        if (ads && authoritativeState != null) {
+        if (ads && isHoldingGun(minecraft)) {
             if (sensitivityBeforeAds == null) {
                 sensitivityBeforeAds = minecraft.options.sensitivity().get();
             }
-            double targetMultiplier = authoritativeState.adsSensitivityMultiplier()
+            double targetMultiplier = (authoritativeState == null
+                    ? TARGET_PISTOL_SENSITIVITY : authoritativeState.adsSensitivityMultiplier())
                     * HbmClientConfig.ADS_SENSITIVITY_SCALE.get();
-            double multiplier = Mth.lerp(adsBlend, 1.0D, targetMultiplier);
+            double multiplier = Mth.lerp(easeInOutQuint(adsBlend), 1.0D, targetMultiplier);
             minecraft.options.sensitivity().set(sensitivityBeforeAds * multiplier);
         } else if (sensitivityBeforeAds != null) {
             minecraft.options.sensitivity().set(sensitivityBeforeAds);
@@ -411,7 +442,7 @@ public final class ClientWeaponController {
         if (!minecraft.options.getCameraType().isFirstPerson() || minecraft.player == null) {
             return;
         }
-        if (!minecraft.player.isSprinting() && viewmodelAdsBlend() <= 0.82F) {
+        if (!minecraft.player.isSprinting() && viewmodelAdsBlend() <= 0.20F) {
             int centerX = graphics.guiWidth() / 2
                     + Math.round(SuperbGunPresentationState.crosshairOffsetX());
             int centerY = graphics.guiHeight() / 2
@@ -448,38 +479,30 @@ public final class ClientWeaponController {
         int reserve = countReserveAmmo(minecraft, state.selectedAmmoId());
         String reserveText = minecraft.player.getAbilities().instabuild ? "\u221e" : Integer.toString(reserve);
 
-        int right = graphics.guiWidth() - 8;
-        int bottom = graphics.guiHeight() - 8;
-        int left = right - 142;
-        int top = bottom - 61;
-        graphics.fill(left, top, right, bottom, 0x7006080B);
-        graphics.fill(left, top, left + 2, bottom, 0xD8E9F0F5);
-        graphics.drawString(minecraft.font, Component.literal(gunName), left + 8, top + 6,
-                0xFFF4F6F8, true);
-        graphics.drawString(minecraft.font, Component.literal(ammoName), left + 8, top + 18,
-                0xFF9FAFBC, true);
-        graphics.drawString(minecraft.font, Component.literal(status), left + 8, bottom - 13,
-                0xFFCAD5DD, true);
-        String modeKey = "[" + FIRE_MODE.getTranslatedKeyMessage().getString() + "]";
-        String ammoKey = "[" + AMMO.getTranslatedKeyMessage().getString() + "]";
-        graphics.drawString(minecraft.font, Component.literal(modeKey), left + 8, bottom - 25,
-                0xFF8093A1, true);
-        graphics.drawString(minecraft.font, Component.literal(ammoKey), left + 33, bottom - 25,
-                0xFF8093A1, true);
+        int right = graphics.guiWidth() - 9;
+        int bottom = graphics.guiHeight() - 9;
+        int left = right - 104;
+        int top = bottom - 43;
+        graphics.drawString(minecraft.font, Component.literal(gunName), left, top,
+                0xE8FFFFFF, true);
+        graphics.drawString(minecraft.font, Component.literal(ammoName), left, top + 11,
+                0xC8CBD5DC, true);
+        graphics.drawString(minecraft.font, Component.literal(status), left, bottom - 9,
+                0xB8CAD5DD, true);
 
         String magazine = Integer.toString(state.ammoCount());
         float countScale = 1.65F;
         graphics.pose().pushPose();
-        graphics.pose().translate(right - 33 - minecraft.font.width(magazine) * countScale,
-                top + 31, 0.0F);
+        graphics.pose().translate(right - 22 - minecraft.font.width(magazine) * countScale,
+                top + 17, 0.0F);
         graphics.pose().scale(countScale, countScale, 1.0F);
         graphics.drawString(minecraft.font, Component.literal(magazine), 0, 0,
                 0xFFFFFFFF, true);
         graphics.pose().popPose();
         graphics.drawString(minecraft.font, Component.literal("/ " + reserveText),
-                right - 28, top + 38, 0xFFB7C5CF, true);
+                right - 19, top + 24, 0xD8B7C5CF, true);
         if (!ammoIcon.isEmpty()) {
-            graphics.renderItem(ammoIcon, right - 21, top + 6);
+            graphics.renderItem(ammoIcon, right - 17, top - 1);
         }
     }
 
@@ -541,6 +564,13 @@ public final class ClientWeaponController {
 
     public static boolean reloadIdle() {
         return authoritativeState == null || authoritativeState.reloadPhase() == ReloadPhase.IDLE;
+    }
+
+    private static float easeInOutQuint(float value) {
+        float t = Mth.clamp(value, 0.0F, 1.0F);
+        return t < 0.5F
+                ? 16.0F * t * t * t * t * t
+                : 1.0F - (float) Math.pow(-2.0F * t + 2.0F, 5.0D) / 2.0F;
     }
 
     private static KeyMapping key(String translation, int defaultKey) {

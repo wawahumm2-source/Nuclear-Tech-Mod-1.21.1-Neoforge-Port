@@ -27,10 +27,11 @@
   },
   "reload": {
     "style": "magazine",
-    "start_ticks": 7,
-    "transfer_ticks": 21,
+    "start_ticks": 9,
+    "transfer_ticks": 16,
     "loop_ticks": 0,
-    "end_ticks": 8
+    "end_ticks": 20,
+    "empty_end_ticks": 28
   },
   "damage": 5.0,
   "headshot_multiplier": 1.8,

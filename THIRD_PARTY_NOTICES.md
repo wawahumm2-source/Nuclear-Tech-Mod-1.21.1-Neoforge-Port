@@ -40,7 +40,7 @@ The dependency baseline does not bundle Superb Warfare. The following source fil
 GPL-3.0-covered code adaptations from the exact commit above and identify that provenance in
 file-local comments:
 
-- `src/main/java/com/hbm/client/weapon/render/SuperbGunPresentationState.java` adapts the continuous root-motion and nonlinear recoil-curve approach from `ClientEventHandler.kt` and the procedural pistol presentation in `M1911ItemModel.java`.
+- `src/main/java/com/hbm/client/weapon/render/SuperbGunPresentationState.java` adapts the continuous root-motion, eased zoom, movement-weight, and nonlinear recoil-curve approach from `ClientEventHandler.kt` and the procedural pistol presentation in `Mp443ItemModel.java`.
 - `src/main/java/com/hbm/client/weapon/render/HbmPlayerArmRenderer.java` adapts the Gecko-bone-bound local-player arm rendering sequence from `AnimationHelper.java`.
 - `src/main/java/com/hbm/client/weapon/render/HbmMuzzleFlashRenderer.java` adapts the model-bone-bound muzzle-flare quad technique from `AnimationHelper.java`.
 - `src/main/java/com/hbm/client/weapon/render/HbmGunGeoRenderer.java` follows the bone dispatch architecture of `SimpleGunRenderer.java`.
