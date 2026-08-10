@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
 
@@ -39,6 +40,20 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
     }
 
     @Override
+    public void preRender(PoseStack poseStack, HbmGunItem gun, BakedGeoModel model,
+                          MultiBufferSource buffers, VertexConsumer buffer, boolean isReRender,
+                          float partialTick, int packedLight, int packedOverlay, int renderColor) {
+        super.preRender(poseStack, gun, model, buffers, buffer, isReRender, partialTick,
+                packedLight, packedOverlay, renderColor);
+        if (!isReRender && renderPerspective != null && renderPerspective.firstPerson()) {
+            // GeoItemRenderer centers conventional item geometry at (0.5, 0.51, 0.5). HBM's
+            // OBJ bridge already emits centered model-space coordinates, so retaining that
+            // offset pushes the first-person weapon almost entirely out of frame.
+            poseStack.translate(-0.5D, -0.51D, -0.5D);
+        }
+    }
+
+    @Override
     public void renderRecursively(PoseStack poseStack, HbmGunItem gun, GeoBone bone,
                                   RenderType renderType, MultiBufferSource buffers,
                                   VertexConsumer buffer, boolean isReRender, float partialTick,
@@ -49,7 +64,7 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
             if (virtualBone != null) {
                 if (virtualBone.role() == SuperbGunRig.BoneRole.MUZZLE_FLASH) {
                     HbmMuzzleFlashRenderer.render(poseStack, buffers, packedLight, bone,
-                            virtualBone.effectSize(), renderPerspective);
+                            virtualBone.pivot(), virtualBone.effectSize(), renderPerspective);
                 } else if (renderPerspective.firstPerson()) {
                     HbmPlayerArmRenderer.render(poseStack, buffers, packedLight, bone,
                             virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND, renderType);

@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.phys.Vec3;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.util.RenderUtil;
 
@@ -22,7 +23,8 @@ final class HbmMuzzleFlashRenderer {
             HbmNuclearTech.MOD_ID, "textures/particle/flare.png");
 
     static void render(PoseStack poseStack, MultiBufferSource buffers, int packedLight,
-                       GeoBone bone, float baseSize, ItemDisplayContext perspective) {
+                       GeoBone bone, Vec3 sourcePosition, float baseSize,
+                       ItemDisplayContext perspective) {
         float strength = SuperbGunPresentationState.flashStrength();
         if (strength <= 0.01F || perspective == null || !perspective.firstPerson()) {
             return;
@@ -31,6 +33,13 @@ final class HbmMuzzleFlashRenderer {
         float size = baseSize * (0.82F + strength * 0.28F);
         poseStack.pushPose();
         try {
+            // HBM OBJ vertices are converted to Gecko model space as (-x, y, z) / 16. A
+            // GeoBone pivot is only a rotation origin; it does not position an empty flare bone.
+            // Apply the authored muzzle coordinate explicitly, as Superb Warfare's flare helper
+            // does for each weapon model.
+            poseStack.translate(-sourcePosition.x / 16.0D,
+                    sourcePosition.y / 16.0D,
+                    sourcePosition.z / 16.0D);
             RenderUtil.translateMatrixToBone(poseStack, bone);
             RenderUtil.translateToPivotPoint(poseStack, bone);
             RenderUtil.rotateMatrixAroundBone(poseStack, bone);

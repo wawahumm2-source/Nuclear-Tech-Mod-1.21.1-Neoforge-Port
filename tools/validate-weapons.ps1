@@ -923,7 +923,9 @@ function Validate-PilotRuntimeAssets {
     }
     if (-not (Test-Path -LiteralPath $rendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'HbmMuzzleFlashRenderer.render' -Quiet) -or
-        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'HbmPlayerArmRenderer.render' -Quiet)) {
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'HbmPlayerArmRenderer.render' -Quiet) -or
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'poseStack.translate(-0.5D, -0.51D, -0.5D)' -Quiet) -or
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'virtualBone.pivot()' -Quiet)) {
         Add-ValidationError 'The gun renderer is not bound to its model-local arms and muzzle effects.'
     }
     if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
@@ -932,13 +934,22 @@ function Validate-PilotRuntimeAssets {
     }
     if (-not (Test-Path -LiteralPath $flareRendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $flareRendererSource -SimpleMatch $superbCommit -Quiet) -or
-        -not (Select-String -LiteralPath $flareRendererSource -SimpleMatch 'RenderUtil.translateMatrixToBone' -Quiet)) {
+        -not (Select-String -LiteralPath $flareRendererSource -SimpleMatch 'RenderUtil.translateMatrixToBone' -Quiet) -or
+        -not (Select-String -LiteralPath $flareRendererSource -SimpleMatch 'sourcePosition.x / 16.0D' -Quiet)) {
         Add-ValidationError 'The GPL-attributed model-local muzzle-flare renderer is missing.'
     }
     if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case MUZZLE_FLASH -> {' -Quiet) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (!localFirstPerson)' -Quiet)) {
         Add-ValidationError 'Local first-person muzzle flashes can regress to unsafe world-space particles.'
+    }
+    if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch $superbCommit -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'VanillaGuiLayers.CROSSHAIR' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'SuperbGunPresentationState.crosshairSpread()' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'renderAmmoPanel' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'drawHitMarker' -Quiet)) {
+        Add-ValidationError 'The GPL-attributed Superb-style crosshair, hit feedback, or ammunition HUD is missing.'
     }
 }
 

@@ -42,6 +42,7 @@ file-local comments:
 - `src/main/java/com/hbm/client/weapon/render/HbmPlayerArmRenderer.java` adapts the Gecko-bone-bound local-player arm rendering sequence from `AnimationHelper.java`.
 - `src/main/java/com/hbm/client/weapon/render/HbmMuzzleFlashRenderer.java` adapts the model-bone-bound muzzle-flare quad technique from `AnimationHelper.java`.
 - `src/main/java/com/hbm/client/weapon/render/HbmGunGeoRenderer.java` follows the bone dispatch architecture of `SimpleGunRenderer.java`.
+- `src/main/java/com/hbm/client/weapon/ClientWeaponController.java` adapts the dynamic segmented-crosshair behavior, hit-feedback presentation, and bottom-right ammunition information hierarchy from `CrossHairOverlay.kt` and `AmmoBarOverlay.kt`. The implementation draws its own primitives and HBM item icons; it contains no Superb Warfare HUD texture.
 
 All model coordinates, textures, sounds, animation resources, and weapon-specific rig values in
 the HBM implementation are independently authored for HBM assets. No Superb Warfare model,

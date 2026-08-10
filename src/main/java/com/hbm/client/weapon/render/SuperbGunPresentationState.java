@@ -100,7 +100,7 @@ public final class SuperbGunPresentationState {
     }
 
     public static void applyFirstPerson(PoseStack poseStack, SuperbGunRig rig, boolean leftHand) {
-        float ads = ClientWeaponController.viewmodelAdsBlend();
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
         SuperbGunRig.FirstPersonPose base = rig.hip().lerp(rig.ads(), ads);
         float moveAmount = midpoint(previousMove, move) * (1.0F - ads * 0.72F);
         float sprintAmount = midpoint(previousSprint, sprint) * (1.0F - ads);
@@ -163,8 +163,36 @@ public final class SuperbGunPresentationState {
         return recoilSide * 0.18F;
     }
 
+    public static float crosshairSpread() {
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
+        float movement = midpoint(previousMove, move);
+        float sprinting = midpoint(previousSprint, sprint);
+        float firing = midpoint(previousFireTime, fireTime) > 0.0F ? 1.0F : 0.0F;
+        return Mth.clamp(1.0F + movement * 1.5F + sprinting * 4.0F + firing * 2.2F
+                - ads * 0.82F, 0.35F, 8.0F);
+    }
+
+    public static float crosshairOffsetX() {
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
+        return swayY * (1.0F - ads * 0.82F) * 0.55F
+                + (float) Math.sin(walkPhase) * midpoint(previousMove, move) * 1.35F;
+    }
+
+    public static float crosshairOffsetY() {
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
+        return swayX * (1.0F - ads * 0.82F) * 0.45F
+                + (float) Math.abs(Math.cos(walkPhase)) * midpoint(previousMove, move) * 0.75F;
+    }
+
     private static float midpoint(float previous, float current) {
         return (previous + current) * 0.5F;
+    }
+
+    private static float easeInOutQuint(float value) {
+        float t = Mth.clamp(value, 0.0F, 1.0F);
+        return t < 0.5F
+                ? 16.0F * t * t * t * t * t
+                : 1.0F - (float) Math.pow(-2.0F * t + 2.0F, 5.0D) / 2.0F;
     }
 
     // GPL-3.0 curve adaptation from Superb Warfare ClientEventHandler.getBoneRotX/Y/Z.

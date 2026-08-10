@@ -231,9 +231,11 @@ public final class BallisticsService {
 
     private static void broadcastEffect(ServerLevel level, ActiveRound round, WeaponEffectType type,
                                         Vec3 position, ResourceLocation resource, int variant) {
+        Entity shooter = level.getEntity(round.shooterId);
+        int sourceEntityId = shooter == null ? -1 : shooter.getId();
         PacketDistributor.sendToPlayersNear(level, null, position.x, position.y, position.z, 96.0D,
                 new WeaponEffectPayload(type, round.gunId, resource,
-                        position.x, position.y, position.z, 0.0F, 0.0F, -1, variant));
+                        position.x, position.y, position.z, 0.0F, 0.0F, sourceEntityId, variant));
     }
 
     public static Vec3 spreadDirection(Vec3 direction, double spreadDegrees, RandomSource random) {

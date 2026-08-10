@@ -20,6 +20,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -37,6 +38,8 @@ import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
@@ -45,6 +48,12 @@ import software.bernie.geckolib.animatable.GeoItem;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Client input, prediction, and presentation for HBM firearms. The segmented crosshair and
+ * bottom-right ammunition presentation adapt the behavior and information hierarchy of Superb
+ * Warfare's CrossHairOverlay and AmmoBarOverlay at commit
+ * 9b5284f42ef79532e6fb7f03ab07425c693b0b43 (GPL-3.0), using only HBM/vanilla rendering assets.
+ */
 @EventBusSubscriber(modid = HbmNuclearTech.MOD_ID, value = Dist.CLIENT)
 public final class ClientWeaponController {
     private static final String CATEGORY = "key.categories.hbm.weapons";
@@ -67,6 +76,8 @@ public final class ClientWeaponController {
     private static String lastPresentationPose;
     private static float previousAdsBlend;
     private static float adsBlend;
+    private static int hitMarkerTicks;
+    private static int headshotMarkerTicks;
 
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
@@ -151,6 +162,8 @@ public final class ClientWeaponController {
         updateAdsSensitivity(minecraft, valid && (lastAds || authoritativeState != null && authoritativeState.ads()));
         SuperbGunPresentationState.tick(minecraft, valid);
         screenShake *= 0.78F;
+        hitMarkerTicks = Math.max(0, hitMarkerTicks - 1);
+        headshotMarkerTicks = Math.max(0, headshotMarkerTicks - 1);
     }
 
     @SubscribeEvent
@@ -173,23 +186,25 @@ public final class ClientWeaponController {
     }
 
     @SubscribeEvent
+    public static void replaceVanillaCrosshair(RenderGuiLayerEvent.Pre event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (VanillaGuiLayers.CROSSHAIR.equals(event.getName()) && isHoldingGun(minecraft)) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
     public static void renderHud(RenderGuiEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!isHoldingGun(minecraft) || authoritativeState == null || minecraft.options.hideGui) {
+        if (!isHoldingGun(minecraft) || minecraft.options.hideGui) {
             return;
         }
-        GunState state = authoritativeState.state();
         GuiGraphics graphics = event.getGuiGraphics();
-        String ammo = state.ammoCount() + "  |  " + state.selectedAmmoId().getPath();
-        String mode = state.fireMode().name();
-        if (authoritativeState.reloadPhase() != com.hbm.weapon.state.ReloadPhase.IDLE) {
-            mode += "  \u2022  " + authoritativeState.reloadPhase().name();
+        renderCrosshair(graphics, minecraft);
+        if (authoritativeState == null) {
+            return;
         }
-        int right = graphics.guiWidth() - 10;
-        graphics.drawString(minecraft.font, Component.literal(ammo),
-                right - minecraft.font.width(ammo), graphics.guiHeight() - 38, 0xF2F2F2, true);
-        graphics.drawString(minecraft.font, Component.literal(mode),
-                right - minecraft.font.width(mode), graphics.guiHeight() - 26, 0xB7CADB, true);
+        renderAmmoPanel(graphics, minecraft, authoritativeState.state());
     }
 
     public static void acceptState(WeaponStatePayload payload) {
@@ -224,6 +239,12 @@ public final class ClientWeaponController {
 
         boolean local = minecraft.player != null && payload.sourceEntityId() == minecraft.player.getId();
         boolean localFirstPerson = local && minecraft.options.getCameraType().isFirstPerson();
+        if (local && payload.effect() == WeaponEffectType.IMPACT) {
+            hitMarkerTicks = Math.max(hitMarkerTicks, 8);
+        } else if (local && payload.effect() == WeaponEffectType.HEADSHOT) {
+            hitMarkerTicks = Math.max(hitMarkerTicks, 10);
+            headshotMarkerTicks = Math.max(headshotMarkerTicks, 12);
+        }
         if (payload.effect() == WeaponEffectType.FIRE && local) {
             boolean alreadyPredicted = predictedRecoilPending;
             applyAuthoritativeRecoil(minecraft, payload);
@@ -384,6 +405,118 @@ public final class ClientWeaponController {
     private static boolean isHoldingGun(Minecraft minecraft) {
         return minecraft.player != null
                 && minecraft.player.getMainHandItem().getItem() instanceof HbmGunItem;
+    }
+
+    private static void renderCrosshair(GuiGraphics graphics, Minecraft minecraft) {
+        if (!minecraft.options.getCameraType().isFirstPerson() || minecraft.player == null) {
+            return;
+        }
+        if (!minecraft.player.isSprinting() && viewmodelAdsBlend() <= 0.82F) {
+            int centerX = graphics.guiWidth() / 2
+                    + Math.round(SuperbGunPresentationState.crosshairOffsetX());
+            int centerY = graphics.guiHeight() / 2
+                    + Math.round(SuperbGunPresentationState.crosshairOffsetY());
+            int gap = 3 + Math.round(2.8F * SuperbGunPresentationState.crosshairSpread());
+            int arm = 5;
+            int white = 0xEEFFFFFF;
+            int shadow = 0xB0000000;
+
+            graphics.fill(centerX, centerY, centerX + 1, centerY + 1, white);
+            horizontalLine(graphics, centerX - gap - arm, centerX - gap, centerY, shadow, white);
+            horizontalLine(graphics, centerX + gap, centerX + gap + arm, centerY, shadow, white);
+            verticalLine(graphics, centerX, centerY - gap - arm, centerY - gap, shadow, white);
+            verticalLine(graphics, centerX, centerY + gap, centerY + gap + arm, shadow, white);
+        }
+
+        if (hitMarkerTicks > 0) {
+            drawHitMarker(graphics, graphics.guiWidth() / 2, graphics.guiHeight() / 2,
+                    headshotMarkerTicks > 0 ? 0xFFFFC95A : 0xFFFFFFFF);
+        }
+    }
+
+    private static void renderAmmoPanel(GuiGraphics graphics, Minecraft minecraft, GunState state) {
+        ItemStack held = minecraft.player.getMainHandItem();
+        ItemStack ammoIcon = BuiltInRegistries.ITEM.get(state.selectedAmmoId()).getDefaultInstance();
+        String gunName = held.getHoverName().getString();
+        String ammoName = ammoIcon.isEmpty()
+                ? state.selectedAmmoId().getPath()
+                : ammoIcon.getHoverName().getString();
+        String fireMode = state.fireMode().name().replace('_', ' ');
+        String status = authoritativeState.reloadPhase() == ReloadPhase.IDLE
+                ? fireMode
+                : authoritativeState.reloadPhase().name().replace('_', ' ');
+        int reserve = countReserveAmmo(minecraft, state.selectedAmmoId());
+        String reserveText = minecraft.player.getAbilities().instabuild ? "\u221e" : Integer.toString(reserve);
+
+        int right = graphics.guiWidth() - 8;
+        int bottom = graphics.guiHeight() - 8;
+        int left = right - 142;
+        int top = bottom - 61;
+        graphics.fill(left, top, right, bottom, 0x7006080B);
+        graphics.fill(left, top, left + 2, bottom, 0xD8E9F0F5);
+        graphics.drawString(minecraft.font, Component.literal(gunName), left + 8, top + 6,
+                0xFFF4F6F8, true);
+        graphics.drawString(minecraft.font, Component.literal(ammoName), left + 8, top + 18,
+                0xFF9FAFBC, true);
+        graphics.drawString(minecraft.font, Component.literal(status), left + 8, bottom - 13,
+                0xFFCAD5DD, true);
+        String modeKey = "[" + FIRE_MODE.getTranslatedKeyMessage().getString() + "]";
+        String ammoKey = "[" + AMMO.getTranslatedKeyMessage().getString() + "]";
+        graphics.drawString(minecraft.font, Component.literal(modeKey), left + 8, bottom - 25,
+                0xFF8093A1, true);
+        graphics.drawString(minecraft.font, Component.literal(ammoKey), left + 33, bottom - 25,
+                0xFF8093A1, true);
+
+        String magazine = Integer.toString(state.ammoCount());
+        float countScale = 1.65F;
+        graphics.pose().pushPose();
+        graphics.pose().translate(right - 33 - minecraft.font.width(magazine) * countScale,
+                top + 31, 0.0F);
+        graphics.pose().scale(countScale, countScale, 1.0F);
+        graphics.drawString(minecraft.font, Component.literal(magazine), 0, 0,
+                0xFFFFFFFF, true);
+        graphics.pose().popPose();
+        graphics.drawString(minecraft.font, Component.literal("/ " + reserveText),
+                right - 28, top + 38, 0xFFB7C5CF, true);
+        if (!ammoIcon.isEmpty()) {
+            graphics.renderItem(ammoIcon, right - 21, top + 6);
+        }
+    }
+
+    private static int countReserveAmmo(Minecraft minecraft, net.minecraft.resources.ResourceLocation ammoId) {
+        if (minecraft.player == null) {
+            return 0;
+        }
+        var ammoItem = BuiltInRegistries.ITEM.get(ammoId);
+        int count = 0;
+        for (int slot = 0; slot < minecraft.player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = minecraft.player.getInventory().getItem(slot);
+            if (stack.is(ammoItem)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    private static void horizontalLine(GuiGraphics graphics, int x1, int x2, int y,
+                                       int shadow, int color) {
+        graphics.fill(x1 - 1, y - 1, x2 + 1, y + 2, shadow);
+        graphics.fill(x1, y, x2, y + 1, color);
+    }
+
+    private static void verticalLine(GuiGraphics graphics, int x, int y1, int y2,
+                                     int shadow, int color) {
+        graphics.fill(x - 1, y1 - 1, x + 2, y2 + 1, shadow);
+        graphics.fill(x, y1, x + 1, y2, color);
+    }
+
+    private static void drawHitMarker(GuiGraphics graphics, int centerX, int centerY, int color) {
+        for (int step = 3; step <= 7; step++) {
+            graphics.fill(centerX - step, centerY - step, centerX - step + 1, centerY - step + 1, color);
+            graphics.fill(centerX + step, centerY - step, centerX + step + 1, centerY - step + 1, color);
+            graphics.fill(centerX - step, centerY + step, centerX - step + 1, centerY + step + 1, color);
+            graphics.fill(centerX + step, centerY + step, centerX + step + 1, centerY + step + 1, color);
+        }
     }
 
     private static boolean shouldLowerAtWall(Minecraft minecraft) {
