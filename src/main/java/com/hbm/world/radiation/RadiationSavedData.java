@@ -26,7 +26,19 @@ public final class RadiationSavedData extends SavedData {
     );
 
     public static RadiationSavedData get(ServerLevel level) {
-        return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
+        return level.getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
+    }
+
+    /**
+     * The alpha stored player radiation in the overworld SavedData. Keep it readable until a player has moved to the
+     * persistent player attachment, then remove only that legacy entry.
+     */
+    public static double getLegacyExposure(ServerLevel level, UUID playerId) {
+        return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME).getExposure(playerId);
+    }
+
+    public static void consumeLegacyExposure(ServerLevel level, UUID playerId) {
+        level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME).clearExposure(playerId);
     }
 
     public static RadiationSavedData load(CompoundTag tag, HolderLookup.Provider provider) {
@@ -104,7 +116,7 @@ public final class RadiationSavedData extends SavedData {
 
     public double setChunkFallout(ChunkPos chunkPos, double fallout) {
         long key = chunkPos.toLong();
-        double next = Math.max(0D, fallout);
+        double next = Mth.clamp(fallout, 0D, 100_000D);
         if (next <= 0D) {
             this.chunkFallout.remove(key);
         } else {
@@ -139,6 +151,53 @@ public final class RadiationSavedData extends SavedData {
 
         this.chunkFallout.replaceAll((chunk, fallout) -> Math.max(0D, fallout - amount));
         this.chunkFallout.entrySet().removeIf(entry -> entry.getValue() <= 0D);
+        setDirty();
+    }
+
+    /**
+     * Source-compatible simple chunk field: radiation spreads once per configured interval, with 60% retained in the
+     * origin, 7.5% sent to cardinal neighbors, and 2.5% sent to diagonal neighbors by default.
+     */
+    public void tickChunkRadiationField() {
+        if (this.chunkFallout.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Double> previous = new HashMap<>(this.chunkFallout);
+        Map<Long, Double> next = new HashMap<>();
+        for (Map.Entry<Long, Double> entry : previous.entrySet()) {
+            if (entry.getValue() <= 0D) {
+                continue;
+            }
+
+            ChunkPos source = new ChunkPos(entry.getKey());
+            for (int xOffset = -1; xOffset <= 1; xOffset++) {
+                for (int zOffset = -1; zOffset <= 1; zOffset++) {
+                    int distance = Math.abs(xOffset) + Math.abs(zOffset);
+                    double share = distance == 0
+                            ? HbmConfig.RADIATION.chunkSpreadCenter.get()
+                            : distance == 1
+                            ? HbmConfig.RADIATION.chunkSpreadCardinal.get()
+                            : HbmConfig.RADIATION.chunkSpreadDiagonal.get();
+                    if (share <= 0D) {
+                        continue;
+                    }
+                    long target = ChunkPos.asLong(source.x + xOffset, source.z + zOffset);
+                    next.merge(target, entry.getValue() * share, Double::sum);
+                }
+            }
+        }
+
+        this.chunkFallout.clear();
+        for (Map.Entry<Long, Double> entry : next.entrySet()) {
+            double value = entry.getValue();
+            if (previous.containsKey(entry.getKey())) {
+                value = value * HbmConfig.RADIATION.chunkSpreadDecay.get() - HbmConfig.RADIATION.chunkSpreadFloor.get();
+            }
+            if (value > 0.00001D) {
+                this.chunkFallout.put(entry.getKey(), Mth.clamp(value, 0D, 100_000D));
+            }
+        }
         setDirty();
     }
 }

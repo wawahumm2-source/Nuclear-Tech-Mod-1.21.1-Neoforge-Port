@@ -25,15 +25,15 @@ import org.jetbrains.annotations.Nullable;
 
 public class BurnerPressBlock extends BaseEntityBlock {
     public static final MapCodec<BurnerPressBlock> CODEC = simpleCodec(BurnerPressBlock::new);
-    private static final VoxelShape SHAPE = Shapes.or(
+    private static final VoxelShape FRAME_SHAPE = Shapes.or(
             box(0.0D, 0.0D, 0.0D, 16.0D, 3.0D, 16.0D),
-            box(2.0D, 3.0D, 2.0D, 14.0D, 6.0D, 14.0D),
-            box(1.0D, 6.0D, 1.0D, 4.0D, 32.0D, 4.0D),
-            box(12.0D, 6.0D, 1.0D, 15.0D, 32.0D, 4.0D),
-            box(1.0D, 6.0D, 12.0D, 4.0D, 32.0D, 15.0D),
-            box(12.0D, 6.0D, 12.0D, 15.0D, 32.0D, 15.0D),
-            box(2.0D, 32.0D, 2.0D, 14.0D, 40.0D, 14.0D),
-            box(5.0D, 14.0D, 5.0D, 11.0D, 32.0D, 11.0D),
+            box(2.0D, 3.0D, 2.0D, 14.0D, 16.0D, 14.0D),
+            box(1.0D, 16.0D, 1.0D, 4.0D, 34.0D, 4.0D),
+            box(12.0D, 16.0D, 1.0D, 15.0D, 34.0D, 4.0D),
+            box(1.0D, 16.0D, 12.0D, 4.0D, 34.0D, 15.0D),
+            box(12.0D, 16.0D, 12.0D, 15.0D, 34.0D, 15.0D),
+            box(4.0D, 16.0D, 4.0D, 12.0D, 19.0D, 12.0D),
+            box(0.0D, 32.0D, 0.0D, 16.0D, 40.0D, 16.0D),
             box(4.0D, 40.0D, 4.0D, 12.0D, 48.0D, 12.0D));
 
     public BurnerPressBlock(Properties properties) {
@@ -52,7 +52,17 @@ public class BurnerPressBlock extends BaseEntityBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        return FRAME_SHAPE;
+    }
+
+    @Override
+    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return FRAME_SHAPE;
+    }
+
+    @Override
+    protected VoxelShape getInteractionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return FRAME_SHAPE;
     }
 
     @Override

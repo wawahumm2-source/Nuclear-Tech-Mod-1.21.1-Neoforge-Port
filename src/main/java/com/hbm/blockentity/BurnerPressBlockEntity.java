@@ -1,12 +1,14 @@
 package com.hbm.blockentity;
 
 import com.hbm.blockentity.machine.MachineOutputHelper;
+import com.hbm.blockentity.machine.BurnerPressTiming;
 import com.hbm.blockentity.machine.SidedMachineItemHandler;
 import com.hbm.item.StampItem;
 import com.hbm.menu.BurnerPressMenu;
 import com.hbm.recipe.BurnerPressRecipe;
 import com.hbm.recipe.BurnerPressRecipeInput;
 import com.hbm.registry.HbmBlockEntities;
+import com.hbm.registry.HbmBlocks;
 import com.hbm.registry.HbmRecipes;
 import com.hbm.registry.HbmSounds;
 import net.minecraft.core.BlockPos;
@@ -46,10 +48,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
     public static final int SLOT_COUNT = 13;
 
     private static final int CLIENT_SYNC_INTERVAL = 4;
-    private static final int BURN_COST = 200;
     private static final int DEFAULT_MAX_PRESS = 200;
-    private static final int MAX_SPEED = 400;
-    private static final int PROGRESS_AT_MAX_SPEED = 25;
     private static final int PRESS_DELAY_TICKS = 5;
 
     private int press;
@@ -57,6 +56,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
     private int speed;
     private int delay;
     private int burnTime;
+    private int maxBurnTime;
     private boolean processing;
     private boolean retracting;
     private float previousAnimationProgress;
@@ -94,7 +94,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
                 case 0 -> press;
                 case 1 -> maxPress;
                 case 2 -> burnTime;
-                case 3 -> BURN_COST;
+                case 3 -> maxBurnTime;
                 case 4 -> speed;
                 default -> 0;
             };
@@ -106,6 +106,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
                 case 0 -> press = value;
                 case 1 -> maxPress = value;
                 case 2 -> burnTime = value;
+                case 3 -> maxBurnTime = value;
                 case 4 -> speed = value;
                 default -> {
                 }
@@ -128,15 +129,20 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         ItemStack stamp = blockEntity.items.getStackInSlot(SLOT_STAMP);
         BurnerPressRecipe recipe = blockEntity.getRecipe(level, input, stamp);
         ItemStack result = recipe == null ? ItemStack.EMPTY : recipe.assemble(new BurnerPressRecipeInput(input, stamp), level.registryAccess());
-        boolean canProcess = recipe != null && blockEntity.burnTime >= BURN_COST && blockEntity.canOutput(result);
+        boolean fuelChanged = blockEntity.replenishFuelIfNeeded();
+        boolean fuelBurning = blockEntity.burnTime > 0;
+        boolean canProcess = recipe != null
+                && blockEntity.canOutput(result)
+                && BurnerPressTiming.canRunRecipe(fuelBurning, blockEntity.speed);
 
         int oldSpeed = blockEntity.speed;
-        if ((canProcess || blockEntity.retracting) && blockEntity.burnTime >= BURN_COST) {
-            blockEntity.speed = Math.min(MAX_SPEED, blockEntity.speed + blockEntity.getSpeedIncrease(level, pos));
-        } else {
-            blockEntity.speed = Math.max(0, blockEntity.speed - 1);
-        }
+        int oldBurnTime = blockEntity.burnTime;
+        boolean preheated = blockEntity.isPreheated(level, pos);
+        blockEntity.speed = BurnerPressTiming.advanceSpeed(blockEntity.speed, fuelBurning, preheated, level.getGameTime());
+        blockEntity.burnTime = BurnerPressTiming.burnFuel(blockEntity.burnTime, fuelBurning);
         changed |= oldSpeed != blockEntity.speed;
+        changed |= oldBurnTime != blockEntity.burnTime;
+        changed |= fuelChanged;
 
         if (blockEntity.delay > 0) {
             blockEntity.delay--;
@@ -144,6 +150,9 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         } else {
             int stampSpeed = blockEntity.getStampSpeed();
             if (blockEntity.retracting) {
+                // The approved residual-heat behavior can cool below the original one-pixel threshold mid-stroke.
+                // Retraction must still finish instead of leaving the head locked in place.
+                stampSpeed = BurnerPressTiming.getRetractionSpeed(blockEntity.speed);
                 blockEntity.press -= stampSpeed;
                 if (blockEntity.press <= 0) {
                     blockEntity.press = 0;
@@ -172,11 +181,9 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
             }
         }
 
-        changed |= blockEntity.consumeFuelIfNeeded();
-
         if (changed) {
             blockEntity.setChanged();
-            if (blockEntity.press == 0 || blockEntity.press >= blockEntity.maxPress || blockEntity.press % CLIENT_SYNC_INTERVAL == 0) {
+            if (level.getGameTime() % CLIENT_SYNC_INTERVAL == 0 || blockEntity.press >= blockEntity.maxPress) {
                 blockEntity.sync(level, state);
             }
         }
@@ -240,6 +247,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         tag.put("Inventory", this.items.serializeNBT(registries));
         saveClientData(tag);
         tag.putInt("BurnTime", this.burnTime);
+        tag.putInt("MaxBurnTime", this.maxBurnTime);
     }
 
     @Override
@@ -253,6 +261,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         this.speed = tag.getInt("Speed");
         this.delay = tag.getInt("Delay");
         this.burnTime = tag.getInt("BurnTime");
+        this.maxBurnTime = tag.getInt("MaxBurnTime");
         this.processing = tag.getBoolean("Processing");
         this.retracting = tag.getBoolean("Retracting");
         this.animationProgress = this.maxPress <= 0 ? 0.0F : Math.min(1.0F, (float) this.press / (float) this.maxPress);
@@ -283,10 +292,11 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
                 .orElse(null);
     }
 
-    private boolean consumeFuelIfNeeded() {
-        if (this.burnTime >= BURN_COST) {
+    private boolean replenishFuelIfNeeded() {
+        if (this.burnTime > 0) {
             return false;
         }
+
         ItemStack fuel = this.items.getStackInSlot(SLOT_FUEL);
         int fuelValue = fuel.getBurnTime(null);
         if (fuelValue <= 0) {
@@ -294,6 +304,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         }
 
         this.burnTime += fuelValue;
+        this.maxBurnTime = this.burnTime;
         if (fuel.hasCraftingRemainingItem()) {
             this.items.setStackInSlot(SLOT_FUEL, fuel.getCraftingRemainingItem());
         } else {
@@ -312,7 +323,6 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
             });
         }
         output(result);
-        this.burnTime = Math.max(0, this.burnTime - BURN_COST);
         this.press = this.maxPress;
         this.delay = PRESS_DELAY_TICKS;
         this.processing = false;
@@ -334,6 +344,7 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
         tag.putInt("Speed", this.speed);
         tag.putInt("Delay", this.delay);
         tag.putInt("BurnTime", this.burnTime);
+        tag.putInt("MaxBurnTime", this.maxBurnTime);
         tag.putBoolean("Processing", this.processing);
         tag.putBoolean("Retracting", this.retracting);
     }
@@ -349,10 +360,15 @@ public class BurnerPressBlockEntity extends BlockEntity implements MenuProvider 
     }
 
     private int getStampSpeed() {
-        return this.speed * PROGRESS_AT_MAX_SPEED / MAX_SPEED;
+        return BurnerPressTiming.getStampSpeed(this.speed);
     }
 
-    private int getSpeedIncrease(Level level, BlockPos pos) {
-        return 1;
+    private boolean isPreheated(Level level, BlockPos pos) {
+        for (Direction direction : Direction.values()) {
+            if (level.getBlockState(pos.relative(direction)).is(HbmBlocks.PRESS_PREHEATER.get())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

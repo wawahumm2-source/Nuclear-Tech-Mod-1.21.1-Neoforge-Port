@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:block",
+  "pools": [{
+    "bonus_rolls": 0,
+    "entries": [{
+      "type": "minecraft:item",
+      "functions": [{
+        "enchantment": "minecraft:fortune",
+        "formula": "minecraft:ore_drops",
+        "function": "minecraft:apply_bonus"
+      }],
+      "name": "minecraft:emerald"
+    }],
+    "rolls": 1
+  }]
+}

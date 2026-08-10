@@ -6,8 +6,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$javaHome = Join-Path $projectRoot ".tooling\jdk-21\jdk-21.0.11+10"
-$javaExe = Join-Path $javaHome "bin\java.exe"
+$javaHome = @(
+    (Join-Path $projectRoot ".tooling\jdk-21\jdk-21.0.11+10"),
+    (Join-Path $projectRoot "tools\jdk21-download\jdk-21.0.11+10")
+) | Where-Object { Test-Path -LiteralPath (Join-Path $_ "bin\java.exe") } | Select-Object -First 1
+$javaExe = if ($javaHome) { Join-Path $javaHome "bin\java.exe" } else { $null }
 $gradleWrapper = Join-Path $projectRoot "gradlew.bat"
 $buildLibs = Join-Path $projectRoot "build\libs"
 
@@ -37,9 +40,10 @@ function Get-LatestBuildJar {
         Select-Object -First 1
 }
 
-if (!(Test-Path $javaExe)) {
-    Write-Host "Java 21 was not found at:" -ForegroundColor Red
-    Write-Host "  $javaExe"
+if (!$javaHome) {
+    Write-Host "Java 21 was not found in either supported workspace location:" -ForegroundColor Red
+    Write-Host "  .tooling\jdk-21\jdk-21.0.11+10"
+    Write-Host "  tools\jdk21-download\jdk-21.0.11+10"
     exit 1
 }
 

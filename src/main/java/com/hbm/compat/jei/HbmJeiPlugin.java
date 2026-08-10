@@ -9,6 +9,10 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.ISubtypeRegistration;
+import mezz.jei.api.ingredients.subtypes.ISubtypeInterpreter;
+import mezz.jei.api.ingredients.subtypes.UidContext;
+import com.hbm.block.SellafieldBlockItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -22,6 +26,25 @@ public class HbmJeiPlugin implements IModPlugin {
     @Override
     public ResourceLocation getPluginUid() {
         return UID;
+    }
+
+    @Override
+    public void registerItemSubtypes(ISubtypeRegistration registration) {
+        registration.registerSubtypeInterpreter(
+                HbmItems.SELLAFIELD.get(),
+                new ISubtypeInterpreter<>() {
+                    @Override
+                    public Object getSubtypeData(net.minecraft.world.item.ItemStack stack, UidContext context) {
+                        return SellafieldBlockItem.getLevel(stack);
+                    }
+
+                    @Override
+                    public String getLegacyStringSubtypeInfo(net.minecraft.world.item.ItemStack stack,
+                            UidContext context) {
+                        return Integer.toString(SellafieldBlockItem.getLevel(stack));
+                    }
+                }
+        );
     }
 
     @Override

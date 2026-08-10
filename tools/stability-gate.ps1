@@ -1,5 +1,6 @@
 param(
     [switch]$SkipGradle,
+    [switch]$SkipServerSmoke,
     [switch]$SkipLogScan
 )
 
@@ -9,19 +10,28 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $gradle = Join-Path $root "gradlew.bat"
 $validateParity = Join-Path $PSScriptRoot "validate-parity.ps1"
+$serverSmoke = Join-Path $PSScriptRoot "server-smoke.ps1"
 $localJavaCandidates = @(
     (Join-Path $root ".tooling\jdk-21\jdk-21.0.11+10"),
     (Join-Path $root "tools\jdk21-download\jdk-21.0.11+10")
 )
 $logPaths = @(
-    (Join-Path $root "run\logs\latest.log"),
-    (Join-Path $root "run\logs\debug.log")
+    (Join-Path $root "build\verification\server-smoke.stdout.log"),
+    (Join-Path $root "build\verification\server-smoke.stderr.log"),
+    (Join-Path $root "run-client-smoke\logs\latest.log"),
+    (Join-Path $root "run-client-smoke\logs\debug.log"),
+    (Join-Path $root "run-client-verification\logs\latest.log"),
+    (Join-Path $root "run-client-verification\logs\debug.log")
 )
 $warningPatterns = @(
     "missing texture",
     "Missing texture",
     "missing sound",
     "Missing sound",
+    "Missing particle sprites",
+    "Missing particle",
+    "Maximum sound pool size",
+    "Failed to create new sound handle",
     "Unable to load model",
     "Failed to load",
     "Parsing error loading recipe",
@@ -59,6 +69,15 @@ if (-not $SkipGradle) {
         & $gradle runData
         if ($LASTEXITCODE -ne 0) {
             throw "Data generation failed with exit code $LASTEXITCODE."
+        }
+    }
+}
+
+if (-not $SkipServerSmoke) {
+    Invoke-Step "Dedicated-server smoke test" {
+        & $serverSmoke
+        if ($LASTEXITCODE -ne 0) {
+            throw "Dedicated-server smoke test failed with exit code $LASTEXITCODE."
         }
     }
 }

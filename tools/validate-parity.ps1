@@ -26,7 +26,18 @@ function Get-TextureRefs($node) {
         return $refs
     }
 
-    if ($node -is [System.Management.Automation.PSCustomObject]) {
+    if ($node -is [System.Collections.IDictionary]) {
+        foreach ($key in $node.Keys) {
+            $value = $node[$key]
+            if (([string]$key -eq "model" -or [string]$key -eq "parent") -and $value -is [string]) {
+                $refs.Add($value)
+            } else {
+                foreach ($nested in Get-ModelRefs $value) {
+                    $refs.Add($nested)
+                }
+            }
+        }
+    } elseif ($node -is [System.Management.Automation.PSCustomObject]) {
         foreach ($property in $node.PSObject.Properties) {
             if ($property.Name -eq "textures" -and $property.Value -is [System.Management.Automation.PSCustomObject]) {
                 foreach ($texture in $property.Value.PSObject.Properties) {
@@ -43,6 +54,33 @@ function Get-TextureRefs($node) {
     } elseif ($node -is [System.Array]) {
         foreach ($entry in $node) {
             foreach ($nested in Get-TextureRefs $entry) {
+                $refs.Add($nested)
+            }
+        }
+    }
+
+    return $refs
+}
+
+function Get-ModelRefs($node) {
+    $refs = New-Object System.Collections.Generic.List[string]
+    if ($null -eq $node) {
+        return $refs
+    }
+
+    if ($node -is [System.Management.Automation.PSCustomObject]) {
+        foreach ($property in $node.PSObject.Properties) {
+            if (($property.Name -eq "model" -or $property.Name -eq "parent") -and $property.Value -is [string]) {
+                $refs.Add($property.Value)
+            } else {
+                foreach ($nested in Get-ModelRefs $property.Value) {
+                    $refs.Add($nested)
+                }
+            }
+        }
+    } elseif ($node -is [System.Array]) {
+        foreach ($entry in $node) {
+            foreach ($nested in Get-ModelRefs $entry) {
                 $refs.Add($nested)
             }
         }
@@ -82,6 +120,51 @@ foreach ($modelRoot in $modelRoots) {
                 Add-Issue "Missing model texture: $($_.FullName) -> $textureRef"
             }
         }
+        foreach ($modelRef in Get-ModelRefs $model) {
+            if ($modelRef.EndsWith(".obj")) {
+                continue
+            }
+            if ($modelRef -notmatch "^([^:]+):(.+)$") {
+                continue
+            }
+            if (-not (Test-ResourceFile $Matches[1] "models" $Matches[2] ".json")) {
+                Add-Issue "Missing HBM parent/override model: $($_.FullName) -> $modelRef"
+            }
+        }
+    }
+}
+
+$blockstateRoot = Join-Path $assetRoot "hbm\blockstates"
+if (Test-Path -LiteralPath $blockstateRoot) {
+    Get-ChildItem -LiteralPath $blockstateRoot -Recurse -Filter "*.json" | ForEach-Object {
+        $blockstate = $jsonSerializer.DeserializeObject((Get-Content -LiteralPath $_.FullName -Raw))
+        foreach ($modelRef in Get-ModelRefs $blockstate) {
+            if ($modelRef -notmatch "^([^:]+):(.+)$") {
+                Add-Issue "Blockstate model missing namespace: $($_.FullName) -> $modelRef"
+                continue
+            }
+            if (-not (Test-ResourceFile $Matches[1] "models" $Matches[2] ".json")) {
+                Add-Issue "Missing blockstate model: $($_.FullName) -> $modelRef"
+            }
+        }
+    }
+}
+
+$particleRoot = Join-Path $assetRoot "hbm\particles"
+if (Test-Path -LiteralPath $particleRoot) {
+    Get-ChildItem -LiteralPath $particleRoot -Recurse -Filter "*.json" | ForEach-Object {
+        $particle = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+        foreach ($particleRef in @($particle.textures)) {
+            if ($particleRef -notmatch "^([^:]+):(.+)$") {
+                Add-Issue "Particle texture missing namespace: $($_.FullName) -> $particleRef"
+                continue
+            }
+            $namespace = $Matches[1]
+            $particlePath = $Matches[2]
+            if (-not (Test-ResourceFile $namespace "textures\particle" $particlePath ".png")) {
+                Add-Issue "Missing particle texture: $($_.FullName) -> $particleRef"
+            }
+        }
     }
 }
 
@@ -104,6 +187,25 @@ if (Test-Path -LiteralPath $soundsJson) {
     }
 }
 
+$reloadedMushroom = Join-Path $assetRoot "hbm\models\effect\mush.obj"
+if (-not (Test-Path -LiteralPath $reloadedMushroom)) {
+    Add-Issue "Missing Reloaded mushroom model: $reloadedMushroom"
+} else {
+    $mushroomText = Get-Content -LiteralPath $reloadedMushroom -Raw
+    if ($mushroomText -notmatch "(?m)^o Stem\s*$" -or $mushroomText -notmatch "(?m)^o Ball\s*$") {
+        Add-Issue "Reloaded mushroom model is missing its Stem or Ball part: $reloadedMushroom"
+    }
+}
+
+foreach ($folder in @("fireball", "fireball_lightmap")) {
+    foreach ($stage in 0..10) {
+        $texture = Join-Path $assetRoot "hbm\textures\models\explosion\$folder\fireball_$stage.png"
+        if (-not (Test-Path -LiteralPath $texture)) {
+            Add-Issue "Missing Reloaded mushroom texture stage: $texture"
+        }
+    }
+}
+
 if ($issues.Count -gt 0) {
     Write-Host "Parity validation failed with $($issues.Count) issue(s):"
     foreach ($issue in $issues) {
@@ -112,4 +214,4 @@ if ($issues.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Parity validation passed: JSON, HBM model textures, and HBM sound references resolved."
+Write-Host "Parity validation passed: JSON, HBM model/particle textures, Reloaded mushroom assets, and HBM sound references resolved."

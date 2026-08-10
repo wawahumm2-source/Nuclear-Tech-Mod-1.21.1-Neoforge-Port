@@ -1,0 +1,5 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "render_type": "minecraft:cutout",
+  "textures": { "all": "hbm:block/ore_overlay_uranium_scorched" }
+}

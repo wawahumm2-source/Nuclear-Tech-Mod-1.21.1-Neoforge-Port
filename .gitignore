@@ -34,6 +34,12 @@ bin/
 
 ### Minecraft Modding ###
 run/
+run-client-smoke/
+run-client-verification/
+run-client-nuclear-performance/
+run-data/
+run-server-smoke/
+logs/
 !**/src/**/run/
 **/src/generated/**/.cache/
 repo/

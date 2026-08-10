@@ -11,7 +11,8 @@
 - Geiger counter and RadAway items.
 - Burner Press block entity, menu, and client screen.
 - Burner Press item-handler capability with slot-restricted automation.
-- Burner Press parity pilot with original GUI texture, original slot coordinates, stamp-gated recipes, stored solid-fuel burn time, and original press sound asset.
+- Burner Press parity pilot with original GUI texture, original slot coordinates, stamp-gated recipes, heat-driven solid-fuel burn behavior, and original press sound asset.
+- Burner Press Preheater block with original animated texture and adjacent-lower-block heat acceleration.
 - Prototype Nuclear Charge with fallout.
 - Maintained JSON resources for the first alpha content slice.
 - Original HBM `assets/hbm` tree imported for all builds.
@@ -32,5 +33,6 @@
 - No packet-based client radiation HUD yet; the Geiger counter is the first readout path.
 - JEI integration is dependency-ready but no custom recipe category has been implemented.
 - Burner Press processing now uses the custom `hbm:burner_press` recipe type with explicit stamp requirements.
+- Burner Press Preheater crafting recipe is pending copper plate, tungsten ingot, and lava tank item parity.
 - Ore worldgen JSON is present; runtime in-world placement validation is still pending a manual client pass.
 - Fluids, missiles, advanced explosives, energy networks, and legacy machine families are still staged work.

@@ -4,6 +4,7 @@ import com.hbm.HbmNuclearTech;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 
 public final class HbmTags {
@@ -15,6 +16,17 @@ public final class HbmTags {
         }
 
         private Items() {
+        }
+    }
+
+    public static final class EntityTypes {
+        public static final TagKey<EntityType<?>> RADIATION_IMMUNE = create("radiation_immune");
+
+        private static TagKey<EntityType<?>> create(String name) {
+            return TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath(HbmNuclearTech.MOD_ID, name));
+        }
+
+        private EntityTypes() {
         }
     }
 

@@ -5,6 +5,15 @@
     "hbm:deepslate_uranium_ore",
     "hbm:lead_ore",
     "hbm:radioactive_waste_barrel",
-    "hbm:burner_press"
+    "hbm:burner_press",
+    "hbm:press_preheater",
+    "hbm:sellafield_slaked",
+    "hbm:sellafield",
+    "hbm:sellafield_bedrock",
+    "hbm:ore_sellafield_diamond",
+    "hbm:ore_sellafield_emerald",
+    "hbm:ore_sellafield_uranium_scorched",
+    "hbm:ore_sellafield_schrabidium",
+    "hbm:ore_sellafield_radgem"
   ]
 }

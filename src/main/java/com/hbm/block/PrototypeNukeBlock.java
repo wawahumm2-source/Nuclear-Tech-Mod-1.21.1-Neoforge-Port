@@ -21,7 +21,7 @@ public class PrototypeNukeBlock extends Block {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel) {
             detonate(serverLevel, pos);
-            serverPlayer.displayClientMessage(Component.translatable("message.hbm.prototype_nuke.armed"), true);
+            serverPlayer.displayClientMessage(Component.translatable(detonationMessageKey()), true);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
@@ -33,7 +33,11 @@ public class PrototypeNukeBlock extends Block {
         }
     }
 
-    private static void detonate(ServerLevel level, BlockPos pos) {
+    protected void detonate(ServerLevel level, BlockPos pos) {
         HbmExplosionService.detonatePrototypeNuke(level, pos, null);
+    }
+
+    protected String detonationMessageKey() {
+        return "message.hbm.prototype_nuke.armed";
     }
 }

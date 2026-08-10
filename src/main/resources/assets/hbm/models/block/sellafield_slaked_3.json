@@ -1,0 +1,4 @@
+{
+  "parent": "hbm:block/sellafield_slaked_base",
+  "textures": { "all": "hbm:block/sellafield_slaked_3" }
+}

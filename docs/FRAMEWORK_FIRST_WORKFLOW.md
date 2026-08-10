@@ -1,5 +1,7 @@
 # Framework-First Port Workflow
 
+`docs/FEATURE_PORT_WORKFLOW.md` defines the mandatory specification, validation, visual-review, and approval gates. This document defines the order in which approved work enters the port.
+
 The port should move from stable frameworks to content, not from item volume to systems. Every parity pass should preserve original HBM identity while making the NeoForge foundation stronger.
 
 Reference priority is defined in `docs/CANONICAL_REFERENCE_HIERARCHY.md`. Use `tools/hbm-reference.ps1 compare <name>` before system work so parity decisions are based on targeted evidence from the correct tier.

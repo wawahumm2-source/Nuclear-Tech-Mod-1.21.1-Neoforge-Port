@@ -37,6 +37,10 @@ public final class ChunkRadiationService {
         return RadiationSavedData.get(level).removeChunkFallout(chunkPos, Math.max(0D, radiation));
     }
 
+    public static void tick(ServerLevel level) {
+        RadiationSavedData.get(level).tickChunkRadiationField();
+    }
+
     private ChunkRadiationService() {
     }
 }

@@ -26,8 +26,8 @@ Double-click `Quick View Latest Build.bat` from the project folder to launch the
   - Geiger counter readout
   - RadAway exposure reduction
 - First machine: Burner Press.
-  - two-slot block entity
-  - server-side ticking
+  - four player-facing slots with retained internal backing slots
+  - server-side ticking with approved continuous fuel and heat divergences
   - menu and client screen
   - data-driven `hbm:burner_press` recipes
   - slot-restricted NeoForge item-handler capability for automation

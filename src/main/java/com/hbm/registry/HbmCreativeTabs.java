@@ -4,6 +4,8 @@ import com.hbm.HbmNuclearTech;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
+import com.hbm.block.SellafieldBlock;
+import com.hbm.block.SellafieldBlockItem;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -20,6 +22,28 @@ public final class HbmCreativeTabs {
                 output.accept(HbmItems.DEEPSLATE_URANIUM_ORE.get());
                 output.accept(HbmItems.LEAD_ORE.get());
                 output.accept(HbmItems.RADIOACTIVE_WASTE_BARREL.get());
+                output.accept(HbmItems.SELLAFIELD_SLAKED.get());
+                for (int level = 0; level < SellafieldBlock.LEVEL_COUNT; level++) {
+                    output.accept(SellafieldBlockItem.createStack(HbmItems.SELLAFIELD.get(), level));
+                }
+                output.accept(HbmItems.SELLAFIELD_BEDROCK.get());
+                output.accept(HbmItems.ORE_SELLAFIELD_DIAMOND.get());
+                output.accept(HbmItems.ORE_SELLAFIELD_EMERALD.get());
+                output.accept(HbmItems.ORE_SELLAFIELD_URANIUM_SCORCHED.get());
+                output.accept(HbmItems.ORE_SELLAFIELD_SCHRABIDIUM.get());
+                output.accept(HbmItems.ORE_SELLAFIELD_RADGEM.get());
+                output.accept(HbmItems.WASTE_EARTH.get());
+                output.accept(HbmItems.GAS_RADON.get());
+                output.accept(HbmItems.GAS_RADON_DENSE.get());
+                output.accept(HbmItems.GAS_RADON_TOMB.get());
+                output.accept(HbmItems.WASTE_LOG.get());
+                output.accept(HbmItems.WASTE_PLANKS.get());
+                output.accept(HbmItems.WASTE_LEAVES.get());
+                output.accept(HbmItems.WASTE_MYCELIUM.get());
+                output.accept(HbmItems.WASTE_TRINITITE.get());
+                output.accept(HbmItems.WASTE_TRINITITE_RED.get());
+                output.accept(HbmItems.FALLOUT.get());
+                output.accept(HbmItems.CONTAMINATED_WATER_BUCKET.get());
             })
             .build());
 
@@ -29,6 +53,9 @@ public final class HbmCreativeTabs {
             .displayItems((parameters, output) -> {
                 output.accept(HbmItems.GEIGER_COUNTER.get());
                 output.accept(HbmItems.RADAWAY.get());
+                output.accept(HbmItems.RADAWAY_STRONG.get());
+                output.accept(HbmItems.RADAWAY_FLUSH.get());
+                output.accept(HbmItems.RADX.get());
             })
             .build());
 
@@ -41,13 +68,20 @@ public final class HbmCreativeTabs {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MACHINE = CREATIVE_TABS.register("machine", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.tabMachine"))
             .icon(() -> HbmItems.BURNER_PRESS.get().getDefaultInstance())
-            .displayItems((parameters, output) -> output.accept(HbmItems.BURNER_PRESS.get()))
+            .displayItems((parameters, output) -> {
+                output.accept(HbmItems.BURNER_PRESS.get());
+                output.accept(HbmItems.PRESS_PREHEATER.get());
+            })
             .build());
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> NUKE = CREATIVE_TABS.register("nuke", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.tabNuke"))
             .icon(() -> HbmItems.PROTOTYPE_NUKE.get().getDefaultInstance())
-            .displayItems((parameters, output) -> output.accept(HbmItems.PROTOTYPE_NUKE.get()))
+            .displayItems((parameters, output) -> {
+                output.accept(HbmItems.TNT.get());
+                output.accept(HbmItems.PROTOTYPE_NUKE.get());
+                output.accept(HbmItems.NUKE_BOY.get());
+            })
             .build());
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> PARTS = CREATIVE_TABS.register("parts", () -> CreativeModeTab.builder()
@@ -63,6 +97,7 @@ public final class HbmCreativeTabs {
                 output.accept(HbmItems.PLATE_STEEL.get());
                 output.accept(HbmItems.PLATE_LEAD.get());
                 output.accept(HbmItems.WIRE_GOLD.get());
+                output.accept(HbmItems.GEM_RAD.get());
             })
             .build());
 
@@ -86,6 +121,17 @@ public final class HbmCreativeTabs {
                 output.accept(HbmItems.STAMP_PRINTING_6.get());
                 output.accept(HbmItems.STAMP_PRINTING_7.get());
                 output.accept(HbmItems.STAMP_PRINTING_8.get());
+            })
+            .build());
+
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> DEVELOPER = CREATIVE_TABS.register("developer", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.tabDeveloper"))
+            .icon(() -> HbmItems.RADIATION_INSPECTOR.get().getDefaultInstance())
+            .displayItems((parameters, output) -> {
+                output.accept(HbmItems.RADIATION_INSPECTOR.get());
+                output.accept(HbmItems.RADIATION_RESET.get());
+                output.accept(HbmItems.FALLOUT_INJECTOR.get());
+                output.accept(HbmItems.RADIATION_PULSE.get());
             })
             .build());
 

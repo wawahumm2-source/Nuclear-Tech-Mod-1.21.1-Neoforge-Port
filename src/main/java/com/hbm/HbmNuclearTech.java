@@ -1,9 +1,11 @@
 package com.hbm;
 
 import com.hbm.config.HbmConfig;
+import com.hbm.config.HbmClientConfig;
 import com.hbm.network.HbmPayloads;
 import com.hbm.registry.HbmBlockEntities;
 import com.hbm.registry.HbmBlocks;
+import com.hbm.registry.HbmAttachments;
 import com.hbm.registry.HbmCapabilities;
 import com.hbm.registry.HbmCreativeTabs;
 import com.hbm.registry.HbmEntities;
@@ -11,9 +13,12 @@ import com.hbm.registry.HbmFluids;
 import com.hbm.registry.HbmHazards;
 import com.hbm.registry.HbmItems;
 import com.hbm.registry.HbmMenus;
+import com.hbm.registry.HbmParticles;
 import com.hbm.registry.HbmRecipes;
 import com.hbm.registry.HbmSounds;
 import com.hbm.world.radiation.HbmCommonEvents;
+import com.hbm.world.radiation.RadiationProtectionRegistry;
+import com.hbm.world.explosion.HbmNuclearChunkTickets;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -39,17 +44,22 @@ public final class HbmNuclearTech {
         HbmEntities.register(modEventBus);
         HbmFluids.register(modEventBus);
         HbmCreativeTabs.register(modEventBus);
+        HbmAttachments.register(modEventBus);
+        HbmParticles.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(HbmPayloads::register);
+        modEventBus.addListener(HbmNuclearChunkTickets::register);
         NeoForge.EVENT_BUS.register(HbmCommonEvents.class);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, HbmConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, HbmClientConfig.SPEC);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(HbmHazards::bootstrap);
+        event.enqueueWork(RadiationProtectionRegistry::bootstrap);
         LOGGER.info("Hbm's Nuclear Tech NeoForge port foundation loaded.");
     }
 

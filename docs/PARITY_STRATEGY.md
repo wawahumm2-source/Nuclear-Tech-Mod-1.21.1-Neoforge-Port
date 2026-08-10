@@ -33,10 +33,10 @@ The port target is one-to-one parity with the original HBM Nuclear Tech Mod wher
 
 - The Burner Press must not remain a cube-model machine.
 - Required source assets are present: `press_body.obj`, `press_head.obj`, `machine_press.png`, `gui_press.png`, and `pressoperate.ogg`.
-- Current alpha status: custom three-block-tall hitbox, original body/head OBJ renderer, original press texture bindings, original `gui_press.png`, original slot coordinates, solid-fuel burn storage, stamp-gated recipes, press/retract head movement, and original `pressoperate.ogg` completion sound are in place.
+- Current alpha status: custom three-block-tall hitbox, original body/head OBJ renderer, original press texture bindings, original `gui_press.png`, source slot identity, stamp-gated recipes, press/retract head movement, and original `pressoperate.ogg` completion sound are in place. Active fuel, heat, residual-heat, and compact-GUI differences are recorded as approved divergences.
 - The original OBJ files remain retained; NeoForge wrapper copies add only material bindings needed for 1.21.1 model baking.
-- Required parity work: full original `PressRecipes` catalog, exact preheater acceleration behavior, exact original sound loop/timing, and expanded stamp material families beyond the current active iron/ammo/printing set.
-- The original speed/preheater dial art must not receive temporary overlay drawings. It should stay as source GUI art until the real source behavior is ported.
+- Required parity work: full original `PressRecipes` catalog, exact original sound loop/timing, and expanded stamp material families beyond the current active iron/ammo/printing set. Original preheater acceleration remains intentionally overridden by an approved divergence.
+- GUI overlays and layout changes require an approved feature packet, matched visual evidence, and an explicit divergence entry when they depart from Tier 1.
 
 ## Parity Order
 
