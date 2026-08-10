@@ -267,6 +267,14 @@ public final class ObjBakedGeoModelLoader {
         for (String groupName : groups.keySet()) {
             bakeBoneTree(groupName, rootName, groups, rig, bones, visiting);
         }
+        GunViewmodelProfile.find(location).ifPresent(profile -> profile.armAnchors().forEach(anchor -> {
+            GeoBone hand = new GeoBone(root, anchor.boneName(), Boolean.FALSE, 0.0D,
+                    Boolean.FALSE, Boolean.FALSE);
+            hand.setPivotX((float) anchor.pivot().x);
+            hand.setPivotY((float) anchor.pivot().y);
+            hand.setPivotZ((float) anchor.pivot().z);
+            root.getChildBones().add(hand);
+        }));
         saveSnapshots(root);
 
         ModelProperties properties = new ModelProperties(

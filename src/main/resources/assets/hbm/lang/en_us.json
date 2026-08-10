@@ -143,5 +143,7 @@
   "subtitles.hbm.weapon.fire.shotgun": "Shotgun fires",
   "subtitles.hbm.weapon.fire.grenade": "Grenade launcher fires",
   "subtitles.hbm.weapon.reload": "Weapon reloads",
+  "subtitles.hbm.weapon.reload.remove_magazine": "Magazine removed",
+  "subtitles.hbm.weapon.reload.action": "Pistol slide cycles",
   "subtitles.hbm.weapon.dry_fire": "Weapon clicks"
 }

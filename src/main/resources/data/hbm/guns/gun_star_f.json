@@ -40,7 +40,10 @@
   "sounds": {
     "fire": "hbm:weapon.fire.pistollight",
     "dry_fire": "hbm:weapon.reload.dryfireclick",
-    "reload": "hbm:weapon.reload.magsmallinsert"
+    "reload": "hbm:weapon.reload.magsmallinsert",
+    "reload_remove": "hbm:weapon.reload.magsmallremove",
+    "reload_insert": "hbm:weapon.reload.magsmallinsert",
+    "reload_action": "hbm:weapon.reload.pistolcock"
   },
   "animations": {
     "equip": "hbm:animations/weapon/star_f.animation.json#equip",

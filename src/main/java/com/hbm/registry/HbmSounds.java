@@ -35,7 +35,10 @@ public final class HbmSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> FIRE_GRENADE = register("weapon.glshoot");
     public static final DeferredHolder<SoundEvent, SoundEvent> DRY_FIRE = register("weapon.reload.dryfireclick");
     public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG_SMALL = register("weapon.reload.magsmallinsert");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG_SMALL_REMOVE = register("weapon.reload.magsmallremove");
     public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG = register("weapon.reload.maginsert");
+    public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_MAG_REMOVE = register("weapon.reload.magremove");
+    public static final DeferredHolder<SoundEvent, SoundEvent> ACTION_PISTOL = register("weapon.reload.pistolcock");
     public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_SHOTGUN = register("weapon.reload.shotgunreload");
     public static final DeferredHolder<SoundEvent, SoundEvent> ACTION_SHOTGUN = register("weapon.reload.shotguncock");
     public static final DeferredHolder<SoundEvent, SoundEvent> RELOAD_GRENADE = register("weapon.glreload");

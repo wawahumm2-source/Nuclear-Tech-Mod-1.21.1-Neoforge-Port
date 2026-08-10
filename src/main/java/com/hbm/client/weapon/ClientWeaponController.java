@@ -11,18 +11,23 @@ import com.hbm.network.WeaponInput;
 import com.hbm.network.WeaponInputPayload;
 import com.hbm.network.WeaponStatePayload;
 import com.hbm.registry.HbmDataComponents;
+import com.hbm.registry.HbmItems;
+import com.hbm.weapon.state.ReloadPhase;
 import com.hbm.weapon.state.GunState;
 import com.hbm.weapon.state.RecoilAccumulator;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -58,7 +63,9 @@ public final class ClientWeaponController {
     private static float screenShake;
     private static Double sensitivityBeforeAds;
     private static UUID lastAuthoritativeStack;
-    private static boolean lastSprintAnimation;
+    private static String lastPresentationPose;
+    private static float previousAdsBlend;
+    private static float adsBlend;
 
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
@@ -83,11 +90,21 @@ public final class ClientWeaponController {
         boolean fire = valid && minecraft.options.keyAttack.isDown();
         boolean ads = valid && minecraft.options.keyUse.isDown() && !minecraft.player.isSprinting();
 
+        previousAdsBlend = adsBlend;
+        float adsTarget = valid && (ads || authoritativeState != null && authoritativeState.ads()) ? 1.0F : 0.0F;
+        adsBlend = Mth.approach(adsBlend, adsTarget, 0.18F);
+
         if (fire != lastFire) {
             sendInput(WeaponInput.FIRE, fire);
             if (fire) {
-                applyPredictedRecoil(minecraft);
-                triggerAnimation(minecraft.player, "fire");
+                GunState localState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
+                boolean predictedLiveRound = localState == null || localState.ammoCount() > 0;
+                if (predictedLiveRound) {
+                    applyPredictedRecoil(minecraft);
+                    triggerAnimation(minecraft.player, "fire");
+                } else {
+                    triggerAnimation(minecraft.player, "dry_fire");
+                }
                 predictedAnimationTicks = 6;
             }
             lastFire = fire;
@@ -112,10 +129,19 @@ public final class ClientWeaponController {
             lastAuthoritativeStack = null;
             predictedRecoilPending = false;
         }
-        boolean sprintAnimation = valid && minecraft.player.isSprinting();
-        if (sprintAnimation != lastSprintAnimation) {
-            triggerAnimation(minecraft.player, sprintAnimation ? "sprint" : "idle");
-            lastSprintAnimation = sprintAnimation;
+        boolean actionPlaying = authoritativeState != null
+                && authoritativeState.reloadPhase() != ReloadPhase.IDLE;
+        if (valid && !actionPlaying) {
+            String presentationPose = minecraft.player.isSprinting()
+                    ? "sprint"
+                    : !ads && shouldLowerAtWall(minecraft) ? "lower"
+                    : ads ? "ads" : "idle";
+            if (!presentationPose.equals(lastPresentationPose)) {
+                triggerAnimation(minecraft.player, presentationPose);
+                lastPresentationPose = presentationPose;
+            }
+        } else if (!valid) {
+            lastPresentationPose = null;
         }
         predictedAnimationTicks = Math.max(0, predictedAnimationTicks - 1);
         recoverRecoil(minecraft);
@@ -125,8 +151,9 @@ public final class ClientWeaponController {
 
     @SubscribeEvent
     public static void modifyFov(ComputeFovModifierEvent event) {
-        if (authoritativeState != null && (authoritativeState.ads() || lastAds)) {
-            event.setNewFovModifier(event.getNewFovModifier() * authoritativeState.adsFovMultiplier());
+        if (authoritativeState != null && adsBlend > 0.001F) {
+            float multiplier = Mth.lerp(adsBlend, 1.0F, authoritativeState.adsFovMultiplier());
+            event.setNewFovModifier(event.getNewFovModifier() * multiplier);
         }
     }
 
@@ -167,7 +194,6 @@ public final class ClientWeaponController {
         }
         boolean changedStack = lastAuthoritativeStack == null
                 || !lastAuthoritativeStack.equals(payload.state().stackIdentity());
-        boolean changedAds = authoritativeState == null || authoritativeState.ads() != payload.ads();
         lastAcknowledged = payload.acknowledgedSequence();
         authoritativeState = payload;
         lastRecoilRecovery = Math.max(0.0F, payload.recoilRecoveryPerTick());
@@ -180,8 +206,7 @@ public final class ClientWeaponController {
             }
             if (changedStack) {
                 triggerAnimation(minecraft.player, "equip");
-            } else if (changedAds) {
-                triggerAnimation(minecraft.player, payload.ads() ? "ads" : "idle");
+                lastPresentationPose = null;
             }
         }
     }
@@ -218,14 +243,27 @@ public final class ClientWeaponController {
             }
         }
         switch (payload.effect()) {
-            case MUZZLE_FLASH -> minecraft.level.addParticle(ParticleTypes.FLASH,
-                    payload.x(), payload.y(), payload.z(), 0.0D, 0.0D, 0.0D);
+            case MUZZLE_FLASH -> minecraft.level.addParticle(ParticleTypes.FLAME,
+                    payload.x(), payload.y(), payload.z(), 0.0D, 0.004D, 0.0D);
             case SMOKE -> minecraft.level.addParticle(ParticleTypes.SMOKE,
                     payload.x(), payload.y(), payload.z(), 0.0D, 0.025D, 0.0D);
             case CASING -> {
                 if (HbmClientConfig.CASING_PARTICLES.get()) {
-                    minecraft.level.addParticle(ParticleTypes.CRIT,
-                            payload.x(), payload.y(), payload.z(), 0.08D, 0.04D, 0.0D);
+                    Vec3 look = source == null ? new Vec3(0.0D, 0.0D, 1.0D) : source.getLookAngle();
+                    Vec3 right = look.cross(new Vec3(0.0D, 1.0D, 0.0D));
+                    if (right.lengthSqr() < 1.0E-6D) {
+                        right = new Vec3(1.0D, 0.0D, 0.0D);
+                    } else {
+                        right = right.normalize();
+                    }
+                    Vec3 velocity = right.scale(0.11D)
+                            .add(0.0D, 0.075D, 0.0D)
+                            .subtract(look.scale(0.018D));
+                    minecraft.level.addParticle(
+                            new ItemParticleOption(ParticleTypes.ITEM,
+                                    HbmItems.CASING_SMALL.get().getDefaultInstance()),
+                            payload.x(), payload.y(), payload.z(),
+                            velocity.x, velocity.y, velocity.z);
                 }
             }
             case TRACER -> {
@@ -293,8 +331,9 @@ public final class ClientWeaponController {
             if (sensitivityBeforeAds == null) {
                 sensitivityBeforeAds = minecraft.options.sensitivity().get();
             }
-            double multiplier = authoritativeState.adsSensitivityMultiplier()
+            double targetMultiplier = authoritativeState.adsSensitivityMultiplier()
                     * HbmClientConfig.ADS_SENSITIVITY_SCALE.get();
+            double multiplier = Mth.lerp(adsBlend, 1.0D, targetMultiplier);
             minecraft.options.sensitivity().set(sensitivityBeforeAds * multiplier);
         } else if (sensitivityBeforeAds != null) {
             minecraft.options.sensitivity().set(sensitivityBeforeAds);
@@ -327,6 +366,30 @@ public final class ClientWeaponController {
     private static boolean isHoldingGun(Minecraft minecraft) {
         return minecraft.player != null
                 && minecraft.player.getMainHandItem().getItem() instanceof HbmGunItem;
+    }
+
+    private static boolean shouldLowerAtWall(Minecraft minecraft) {
+        if (minecraft.player == null || minecraft.hitResult == null
+                || minecraft.hitResult.getType() != HitResult.Type.BLOCK) {
+            return false;
+        }
+        return minecraft.player.getEyePosition().distanceToSqr(minecraft.hitResult.getLocation()) < 1.44D;
+    }
+
+    public static float viewmodelAdsBlend() {
+        return (previousAdsBlend + adsBlend) * 0.5F;
+    }
+
+    public static float viewmodelRecoilPitch() {
+        return RECOIL.pitchDebt();
+    }
+
+    public static float viewmodelRecoilYaw() {
+        return RECOIL.yawDebt();
+    }
+
+    public static boolean reloadIdle() {
+        return authoritativeState == null || authoritativeState.reloadPhase() == ReloadPhase.IDLE;
     }
 
     private static KeyMapping key(String translation, int defaultKey) {

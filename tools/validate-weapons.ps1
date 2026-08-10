@@ -853,10 +853,10 @@ function Validate-ItemModel {
 
 function Validate-PilotRuntimeAssets {
     $pilots = @(
-        @{ Name = 'Target Pistol'; Id = 'gun_star_f'; Model = 'star_f'; Animation = 'star_f' },
-        @{ Name = 'StG 77'; Id = 'gun_stg77'; Model = 'stg77'; Animation = 'stg77' },
-        @{ Name = 'SPAS-12'; Id = 'gun_spas12'; Model = 'spas-12'; Animation = 'spas12' },
-        @{ Name = 'Congo Lake'; Id = 'gun_congolake'; Model = 'congolake'; Animation = 'congolake' }
+        @{ Name = 'Target Pistol'; Id = 'gun_star_f'; Model = 'star_f'; Animation = 'star_f'; VirtualBones = @('Lefthand', 'Righthand') },
+        @{ Name = 'StG 77'; Id = 'gun_stg77'; Model = 'stg77'; Animation = 'stg77'; VirtualBones = @() },
+        @{ Name = 'SPAS-12'; Id = 'gun_spas12'; Model = 'spas-12'; Animation = 'spas12'; VirtualBones = @() },
+        @{ Name = 'Congo Lake'; Id = 'gun_congolake'; Model = 'congolake'; Animation = 'congolake'; VirtualBones = @() }
     )
 
     foreach ($pilot in $pilots) {
@@ -886,7 +886,7 @@ function Validate-PilotRuntimeAssets {
             }
         }
         foreach ($bone in @($animatedBones | Sort-Object -Unique)) {
-            if ($bone -notin @('root') -and $bone -cnotin $parts) {
+            if ($bone -notin @('root') -and $bone -cnotin $parts -and $bone -cnotin $pilot.VirtualBones) {
                 Add-ValidationError "$($pilot.Name) animation targets bone '$bone', but its OBJ exposes no matching object/group."
             }
         }
@@ -894,6 +894,8 @@ function Validate-PilotRuntimeAssets {
 
     $bridgeSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\ObjBakedGeoModelLoader.java'
     $modelSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmGunGeoModel.java'
+    $viewmodelSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\GunViewmodelProfile.java'
+    $armRendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmPlayerArmRenderer.java'
     if (-not (Test-Path -LiteralPath $bridgeSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $bridgeSource -SimpleMatch 'OBJ-to-Gecko bridge' -Quiet)) {
         Add-ValidationError 'The faithful OBJ-to-Gecko runtime geometry bridge is missing.'
@@ -901,6 +903,15 @@ function Validate-PilotRuntimeAssets {
     if (-not (Test-Path -LiteralPath $modelSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $modelSource -SimpleMatch 'ObjBakedGeoModelLoader.load' -Quiet)) {
         Add-ValidationError 'The gun GeoModel is not bound to the OBJ-to-Gecko geometry bridge.'
+    }
+    if (-not (Test-Path -LiteralPath $viewmodelSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $viewmodelSource -SimpleMatch '"Righthand"' -Quiet) -or
+        -not (Select-String -LiteralPath $viewmodelSource -SimpleMatch '"Lefthand"' -Quiet)) {
+        Add-ValidationError 'The Target Pistol viewmodel is missing its synthesized hand-bone anchors.'
+    }
+    if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'player.getSkin().texture()' -Quiet)) {
+        Add-ValidationError 'The first-person weapon renderer is not bound to the local player skin.'
     }
 }
 

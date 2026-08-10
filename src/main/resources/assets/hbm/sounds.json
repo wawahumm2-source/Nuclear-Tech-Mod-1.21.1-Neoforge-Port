@@ -2324,6 +2324,7 @@
   },
   "weapon.reload.magremove": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload.remove_magazine",
     "sounds": [
       "hbm:weapon/reload/magremove"
     ]
@@ -2337,6 +2338,7 @@
   },
   "weapon.reload.magsmallremove": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload.remove_magazine",
     "sounds": [
       "hbm:weapon/reload/magsmallremove"
     ]
@@ -2349,6 +2351,7 @@
   },
   "weapon.reload.pistolcock": {
     "category": "player",
+    "subtitle": "subtitles.hbm.weapon.reload.action",
     "sounds": [
       "hbm:weapon/reload/pistolcock"
     ]

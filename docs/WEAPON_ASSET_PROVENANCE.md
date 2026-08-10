@@ -1,6 +1,6 @@
 # Pilot Weapon Asset Provenance
 
-Audit date: 2026-08-07
+Audit date: 2026-08-10
 
 This inventory covers the first gun-framework milestone only: Target Pistol (`gun_star_f`), StG 77, SPAS-12, and Congo Lake. It records the checked-in source assets, source-informed GeckoLib animation translations, and the runtime OBJ-to-Gecko geometry bridge. Static binding checks do not establish in-game visual parity.
 
@@ -11,7 +11,7 @@ This inventory covers the first gun-framework milestone only: Target Pistol (`gu
 | Original HBM source archive | `C:/Users/wawah/Downloads/Hbm-s-Nuclear-Tech-GIT-master.zip` | `fde64f38964b3b6d097e72f51a38329f57b8a8922be412012164f82834a73c2a` | Canonical pilot models, textures, legacy bus animations, and sounds. |
 | Original HBM packaged jar | `C:/Users/wawah/Downloads/HBM-NTM-[1.0.27_X5687].jar` | `121482b2d199c7e3b1cd7b148293077265df0a90efbf92f6db48968935ab20c3` | Confirms the assets shipped in build `1.0.27_X5687`. |
 | HBM Neo Edition source archive | `C:/Users/wawah/Downloads/HBM/HBMsNTM-NEO-EDITION-master.zip` | `a7f0fa5d8a986f485c97e527f34215b0714481591f34a29a5667f52c754679a0` | Intended SPAS-12 source, but the audited archive contains no SPAS-12 model, texture, or animation. |
-| Current sound catalog | `src/main/resources/assets/hbm/sounds.json` | `5af70bd6e054d747d77e9a4cd432116a5e56e4a557a93ce17e2b6e3440040374` | Lowercase 1.21.1 resource-event mapping for the original HBM audio. |
+| Current sound catalog | `src/main/resources/assets/hbm/sounds.json` | `a75ad576332cac8ce75f244bc9e4124bf2d7727087f45e556ec6dfd225ad66f6` | Lowercase 1.21.1 resource-event mapping for the original HBM audio. |
 
 Original HBM and the audited Neo Edition archive both include `LICENSE` and `LICENSE.LESSER`; their README license statements identify GNU LGPL version 3. No per-file author or alternate asset license is embedded in the pilot OBJ, PNG, JSON, or OGG files. Preserve the upstream HBM credits and LGPL notices with distributions. This inventory is provenance evidence, not a legal re-licensing of individual contributions.
 
@@ -21,7 +21,7 @@ Superb Warfare is a behavior and engineering reference only. No Superb Warfare m
 
 | Weapon | Required source decision | Checked-in reality | Conversion status |
 | --- | --- | --- | --- |
-| Target Pistol | Original HBM | Original HBM `star_f` OBJ/PNG are present. The pistol animation is code-driven upstream; no legacy `star_f` animation JSON exists. | GeckoLib animation translation and exact OBJ/UV runtime bridge are present. Static bone binding passes; visual QA remains open. |
+| Target Pistol | Original HBM | Original HBM `star_f` OBJ/PNG are present. The pistol animation is code-driven upstream; no legacy `star_f` animation JSON exists. | GeckoLib animation translation and exact OBJ/UV runtime bridge are present. The modern renderer synthesizes hand anchors and renders the local player's skin/sleeves without adding third-party art. Static binding passes; visual QA remains open. |
 | StG 77 | Original HBM | Original HBM OBJ/PNG/bus-animation JSON are present. | GeckoLib animation translation and exact OBJ/UV runtime bridge are present. Static bone binding passes; visual QA remains open. |
 | SPAS-12 | Neo Edition intended | The available Neo Edition archive has no SPAS-12 assets. The checked-in OBJ/PNG/bus-animation JSON are Original HBM. Do not label them Neo-derived. | Intended Neo source remains blocked. The Original-HBM fallback animation and exact OBJ/UV runtime bridge are present; visual QA remains open. |
 | Congo Lake | Original HBM | Original HBM OBJ/PNG/bus-animation JSON are present. | GeckoLib animation translation and exact OBJ/UV runtime bridge are present. Static bone binding passes; visual QA remains open. |
@@ -35,8 +35,8 @@ All four checked-in OBJ files are text-identical to the Original source/jar afte
 | Target Pistol | `src/main/resources/assets/hbm/models/weapons/star_f.obj` | `e3f9c719c3493cd335b9121705db52a2e272cb06794bc114faeba8e8a836ff3b` | OBJ parts: `Bullet`, `Gun`, `Hammer`, `Mag`, `Slide`. Normalized source hash: `7cfa1c24eed126ecb7706e8efa3b0c1ac16d91abf1d86d97f1033f18f57099b8`. |
 | Target Pistol | `src/main/resources/assets/hbm/textures/models/weapons/star_f.png` | `cea88f4f9f0a0c48d456096a40ae9cb91013f9fdacfc113dbcee476fcaac58f8` | Original texture atlas. |
 | Target Pistol | legacy animation JSON | missing | Upstream `XFactory22lr.LAMBDA_STAR_F_ANIMS` creates bus animations in code rather than loading a JSON file. |
-| Target Pistol | `src/main/resources/assets/hbm/animations/weapon/star_f.animation.json` | `3a6927f252b0c4164b01c59736eaba0ced317c7b803c1dddbbf89d7f4130635e` | GeckoLib `1.8.0`; 11 required clips. Fire/reload motion covers `Slide`, `Hammer`, `Mag`, and `Bullet`, mapped from the upstream code-driven sequence. |
-| Target Pistol | `src/main/resources/assets/hbm/models/item/gun_star_f.json` | `aa13d3233b92ba10155f3cd2fcea30ef65f65f30daae01e31b44c7f786a9068f` | Modern `builtin/entity` model with first-person, third-person, GUI, ground, and fixed transforms. |
+| Target Pistol | `src/main/resources/assets/hbm/animations/weapon/star_f.animation.json` | `621ed5725fabd12bf164f32fbcd8d8a97c653c155abab5db3178e15e92b8d5ac` | GeckoLib `1.8.0`; 11 required clips. Fire/reload motion covers `Slide`, `Hammer`, `Mag`, and `Bullet`; the left player-skin arm follows magazine removal/insertion through the synthesized `Lefthand` anchor. |
+| Target Pistol | `src/main/resources/assets/hbm/models/item/gun_star_f.json` | `0187050d8a86ab29c902d99ea0e5755c054afab3ab3b07acf9d6bb8e80753e7b` | Modern `builtin/entity` model with forward-facing first-person transforms plus third-person, GUI, ground, and fixed transforms. |
 | StG 77 | `src/main/resources/assets/hbm/models/weapons/stg77.obj` | `eb10c829a122eeffbd2a021a828497f29dac738cb252083b8169fdc26605df49` | OBJ parts: `Barrel`, `Breech`, `Bullets`, `Gun`, `Handle`, `Lever`, `Magazine`, `Safety`. Normalized source hash: `6dcc51092557f102d2e38eabcfaf00155096b1c1807f3d5b5892ad4e665c58d4`. |
 | StG 77 | `src/main/resources/assets/hbm/textures/models/weapons/stg77.png` | `e43831d00ac1b82b4af712778774077ac025e3ae78cc6389ca75d032864e32b8` | Original texture atlas. |
 | StG 77 | `src/main/resources/assets/hbm/models/weapons/animations/stg77.json` | `1b9cb1f0df6c38f337f3556e82936fa91a7256b96d125253971e244b61b17608` | Legacy clips: `Fire`, `FireDry`, `Inspect`, `Reload`; legacy bus format, not GeckoLib. |
@@ -53,7 +53,7 @@ All four checked-in OBJ files are text-identical to the Original source/jar afte
 | Congo Lake | `src/main/resources/assets/hbm/animations/weapon/congolake.animation.json` | `8de73ce7794f1daf7592ca343bc845be84d46163c3c52ad63620058bb58d266c` | GeckoLib `1.8.0`; 11 required clips. Fire/reload motion covers `Pump`, `Shell`, `ShellFore`, `GuardInner`, and `GuardOuter`, mapped from the audited bus clips. |
 | Congo Lake | `src/main/resources/assets/hbm/models/item/gun_congolake.json` | `aa13d3233b92ba10155f3cd2fcea30ef65f65f30daae01e31b44c7f786a9068f` | Modern `builtin/entity` model with first-person, third-person, GUI, ground, and fixed transforms. |
 
-No lossy `*.geo.json` duplicate exists. `ObjBakedGeoModelLoader` (`4952dfd9a81101f8e8f373ba2f32684820561fb0160f47ee28968db9ffa86996`) reads the original OBJ vertices, UVs, normals, and faces into a cached GeckoLib `BakedGeoModel`; each OBJ object/group becomes an animation bone. All four animation documents provide the 11 required states (`equip`, `idle`, `ads`, `fire`, `dry_fire`, `reload_start`, `reload_loop`, `reload_end`, `inspect`, `sprint`, and `lower`) with nonempty mechanism motion. The validator confirms every animated bone exists in its source OBJ. Pivot choice, presentation transforms, timing, and visual parity still require in-game inspection.
+No lossy `*.geo.json` duplicate exists. `ObjBakedGeoModelLoader` (`e71269456952ef361bcd555ea7fce5e407b1567aed3df6a5cd32af52164fa831`) reads the original OBJ vertices, UVs, normals, and faces into a cached GeckoLib `BakedGeoModel`; each OBJ object/group becomes an animation bone. The Target Pistol additionally receives empty `Righthand` and `Lefthand` framework bones defined by `GunViewmodelProfile`; these contain no copied geometry or texture. All four animation documents provide the 11 required states (`equip`, `idle`, `ads`, `fire`, `dry_fire`, `reload_start`, `reload_loop`, `reload_end`, `inspect`, `sprint`, and `lower`) with nonempty mechanism motion. The validator confirms every animated bone exists in its source OBJ or in the explicitly synthesized viewmodel contract. Pivot choice and final visual parity still require in-game inspection.
 
 ## Sound inventory
 
@@ -114,7 +114,7 @@ SPAS-12 also shares the dry-fire and revolver-close files listed for the Target 
 ## Missing-resource conclusions
 
 - The selected Neo Edition SPAS-12 source is unavailable in the audited archive. A different Neo revision or a specifically supplied asset set is required before that source decision can be fulfilled.
-- All four pilots have an exact runtime OBJ-to-Gecko geometry rig and statically valid animation-bone binding. They remain visually unverified in game.
+- All four pilots have an exact runtime OBJ-to-Gecko geometry rig and statically valid animation-bone binding. The Target Pistol now has the modern player-skin arm/viewmodel path; it and the other pilots remain visually unverified in the newly built client.
 - Target Pistol still has no legacy animation JSON; the active GeckoLib document is explicitly translated from its upstream code-driven animation logic.
 - The four modern item-model JSON files deliberately use the animated 3D renderer rather than separate flat icons.
 - HBM provides the close gunshot samples above, but no dedicated near/far layers for these four weapons. Distance treatment must be produced through the modern sound implementation without importing Superb Warfare audio.

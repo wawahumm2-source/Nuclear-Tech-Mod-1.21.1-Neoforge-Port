@@ -207,9 +207,22 @@ public final class HbmWeaponService {
                 (float) held.definition().getRecoil().getYaw(),
                 (float) held.definition().getRecoil().getPitch(),
                 firedState.ammoCount());
-        emit(player, held.definition(), WeaponEffectType.MUZZLE_FLASH, ammo.getId(), 0.0F, 0.0F, ammo.getTracerColor());
-        emit(player, held.definition(), WeaponEffectType.SMOKE, ammo.getId(), 0.0F, 0.0F, 0);
-        emit(player, held.definition(), WeaponEffectType.CASING, ammo.getId(), 0.0F, 0.0F, 0);
+        Vec3 up = new Vec3(0.0D, 1.0D, 0.0D);
+        Vec3 right = look.cross(up);
+        if (right.lengthSqr() < 1.0E-6D) {
+            right = new Vec3(1.0D, 0.0D, 0.0D);
+        } else {
+            right = right.normalize();
+        }
+        Vec3 eye = player.getEyePosition();
+        Vec3 muzzle = eye.add(look.scale(0.72D)).add(right.scale(0.12D)).subtract(up.scale(0.12D));
+        Vec3 casing = eye.add(look.scale(0.25D)).add(right.scale(0.24D)).subtract(up.scale(0.10D));
+        emit(player, held.definition(), WeaponEffectType.MUZZLE_FLASH, ammo.getId(),
+                0.0F, 0.0F, ammo.getTracerColor(), muzzle);
+        emit(player, held.definition(), WeaponEffectType.SMOKE, ammo.getId(),
+                0.0F, 0.0F, 0, muzzle);
+        emit(player, held.definition(), WeaponEffectType.CASING, ammo.getId(),
+                0.0F, 0.0F, 0, casing);
         session.addCooldown(held.definition().getShotIntervalTicks());
         syncState(player, held.stack(), session);
         return true;
@@ -232,7 +245,7 @@ public final class HbmWeaponService {
         }
         session.setTriggerHeld(false);
         session.setReload(ReloadPhase.START, held.definition().getReload().getStartTicks());
-        ResourceLocation sound = held.definition().getSounds().get("reload");
+        ResourceLocation sound = soundFor(held.definition(), "reload_remove", "reload");
         playSound(player, sound, 0.8F, 1.0F);
         emit(player, held.definition(), WeaponEffectType.RELOAD_START, sound, 0.0F, 0.0F, 0);
     }
@@ -240,8 +253,10 @@ public final class HbmWeaponService {
     private static void tickReload(ServerPlayer player, HeldGun held, WeaponSession session) {
         GunDefinition.ReloadProfile reload = held.definition().getReload();
         if (interruptPerRoundReload(session, reload)) {
+            ResourceLocation actionSound = soundFor(held.definition(), "reload_action", "reload");
+            playSound(player, actionSound, 0.75F, 1.0F);
             emit(player, held.definition(), WeaponEffectType.RELOAD_END,
-                    held.definition().getSounds().get("reload"), 0.0F, 0.0F, 0);
+                    actionSound, 0.0F, 0.0F, 0);
             syncState(player, held.stack(), session);
             return;
         }
@@ -253,34 +268,45 @@ public final class HbmWeaponService {
             case START -> {
                 if (reload.getStyle() == ReloadStyle.MAGAZINE) {
                     session.setReload(ReloadPhase.TRANSFER, reload.getTransferTicks());
+                    emit(player, held.definition(), WeaponEffectType.RELOAD_INSERT,
+                            soundFor(held.definition(), "reload_insert", "reload"), 0.0F, 0.0F, 0);
                 } else {
                     session.setReload(ReloadPhase.LOOP, reload.getLoopTicks());
                 }
             }
             case TRANSFER -> {
+                boolean needsAction = currentState(held.stack(), held.definition()).ammoCount() == 0;
                 boolean inserted = transferMagazine(player, held);
                 session.setReload(ReloadPhase.END, reload.getEndTicks());
+                ResourceLocation insertSound = soundFor(held.definition(), "reload_insert", "reload");
                 if (inserted) {
-                    emit(player, held.definition(), WeaponEffectType.RELOAD_INSERT,
-                            held.definition().getSounds().get("reload"), 0.0F, 0.0F, 0);
+                    playSound(player, insertSound, 0.8F, 1.0F);
+                }
+                ResourceLocation endSound = needsAction
+                        ? soundFor(held.definition(), "reload_action", "reload") : insertSound;
+                if (inserted && needsAction) {
+                    playSound(player, endSound, 0.75F, 1.0F);
                 }
                 emit(player, held.definition(), WeaponEffectType.RELOAD_END,
-                        held.definition().getSounds().get("reload"), 0.0F, 0.0F, 0);
+                        endSound, 0.0F, 0.0F, 0);
             }
             case LOOP -> {
                 boolean inserted = transferOneRound(player, held);
                 GunState updated = currentState(held.stack(), held.definition());
                 if (inserted) {
+                    ResourceLocation insertSound = soundFor(held.definition(), "reload_insert", "reload");
+                    playSound(player, insertSound, 0.8F, 1.0F);
                     emit(player, held.definition(), WeaponEffectType.RELOAD_INSERT,
-                            held.definition().getSounds().get("reload"), 0.0F, 0.0F, updated.ammoCount());
+                            insertSound, 0.0F, 0.0F, updated.ammoCount());
                 }
                 boolean finished = !inserted
                         || updated.ammoCount() >= held.definition().getMagazine().getCapacity();
                 session.setReload(finished ? ReloadPhase.END : ReloadPhase.LOOP,
                         finished ? reload.getEndTicks() : reload.getLoopTicks());
                 if (finished) {
+                    ResourceLocation actionSound = soundFor(held.definition(), "reload_action", "reload");
                     emit(player, held.definition(), WeaponEffectType.RELOAD_END,
-                            held.definition().getSounds().get("reload"), 0.0F, 0.0F, 0);
+                            actionSound, 0.0F, 0.0F, 0);
                 }
             }
             case END -> {
@@ -414,6 +440,9 @@ public final class HbmWeaponService {
     }
 
     private static void playSound(ServerPlayer player, ResourceLocation soundId, float volume, float pitch) {
+        if (soundId == null) {
+            return;
+        }
         SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(soundId);
         if (sound != null) {
             player.serverLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -423,7 +452,12 @@ public final class HbmWeaponService {
 
     private static void emit(ServerPlayer player, GunDefinition gun, WeaponEffectType effect,
                              ResourceLocation resource, float yaw, float pitch, int variant) {
-        Vec3 position = player.getEyePosition();
+        emit(player, gun, effect, resource, yaw, pitch, variant, player.getEyePosition());
+    }
+
+    private static void emit(ServerPlayer player, GunDefinition gun, WeaponEffectType effect,
+                             ResourceLocation resource, float yaw, float pitch, int variant,
+                             Vec3 position) {
         PacketDistributor.sendToPlayersNear(
                 player.serverLevel(),
                 null,
@@ -435,6 +469,11 @@ public final class HbmWeaponService {
                         position.x, position.y, position.z,
                         yaw, pitch, player.getId(), variant)
         );
+    }
+
+    private static ResourceLocation soundFor(GunDefinition gun, String key, String fallbackKey) {
+        ResourceLocation sound = gun.getSounds().get(key);
+        return sound != null ? sound : gun.getSounds().get(fallbackKey);
     }
 
     private static void syncState(ServerPlayer player, ItemStack stack, WeaponSession session) {
