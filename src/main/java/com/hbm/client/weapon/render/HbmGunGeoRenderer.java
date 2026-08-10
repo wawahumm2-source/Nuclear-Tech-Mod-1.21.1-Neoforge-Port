@@ -1,12 +1,10 @@
 package com.hbm.client.weapon.render;
 
-import com.hbm.client.weapon.ClientWeaponController;
 import com.hbm.item.HbmGunItem;
 import com.hbm.registry.HbmDataComponents;
 import com.hbm.weapon.state.GunState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -14,6 +12,10 @@ import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
 
+/**
+ * HBM asset renderer using the bone-dispatch architecture of Superb Warfare SimpleGunRenderer
+ * at commit 9b5284f42ef79532e6fb7f03ab07425c693b0b43 (GPL-3.0).
+ */
 public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
     public HbmGunGeoRenderer() {
         super(new HbmGunGeoModel());
@@ -26,14 +28,9 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
         poseStack.pushPose();
         try {
             if (displayContext.firstPerson() && stack.getItem() instanceof HbmGunItem gun) {
-                GunViewmodelProfile.find(gun.modelResource()).ifPresent(profile -> profile.apply(
-                        poseStack,
-                        ClientWeaponController.viewmodelAdsBlend(),
-                        ClientWeaponController.viewmodelRecoilPitch(),
-                        ClientWeaponController.viewmodelRecoilYaw(),
-                        Minecraft.getInstance().level == null
-                                ? 0.0F : Minecraft.getInstance().level.getGameTime()
-                ));
+                SuperbGunRig.find(gun.modelResource()).ifPresent(rig ->
+                        SuperbGunPresentationState.applyFirstPerson(
+                                poseStack, rig, displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND));
             }
             super.renderByItem(stack, displayContext, poseStack, buffers, packedLight, packedOverlay);
         } finally {
@@ -46,17 +43,22 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
                                   RenderType renderType, MultiBufferSource buffers,
                                   VertexConsumer buffer, boolean isReRender, float partialTick,
                                   int packedLight, int packedOverlay, int renderColor) {
-        GunViewmodelProfile profile = GunViewmodelProfile.find(gun.modelResource()).orElse(null);
-        if (profile != null) {
-            var arm = profile.arm(bone.getName());
-            if (arm.isPresent()) {
-                if (renderPerspective.firstPerson()) {
-                    HbmPlayerArmRenderer.render(poseStack, buffers, packedLight, bone, arm.get().left());
+        SuperbGunRig rig = SuperbGunRig.find(gun.modelResource()).orElse(null);
+        if (rig != null) {
+            SuperbGunRig.VirtualBone virtualBone = rig.virtualBone(bone.getName()).orElse(null);
+            if (virtualBone != null) {
+                if (virtualBone.role() == SuperbGunRig.BoneRole.MUZZLE_FLASH) {
+                    HbmMuzzleFlashRenderer.render(poseStack, buffers, packedLight, bone,
+                            virtualBone.effectSize(), renderPerspective);
+                } else if (renderPerspective.firstPerson()) {
+                    HbmPlayerArmRenderer.render(poseStack, buffers, packedLight, bone,
+                            virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND, renderType);
                 }
                 return;
             }
-            if ("Slide".equals(bone.getName()) && shouldHoldSlideOpen(currentItemStack)) {
-                bone.setPosZ(-1.0F);
+            if ("Slide".equals(bone.getName())) {
+                bone.setPosZ(shouldHoldSlideOpen(currentItemStack)
+                        ? -1.0F : -0.92F * SuperbGunPresentationState.slideTravel());
             }
         }
         super.renderRecursively(poseStack, gun, bone, renderType, buffers, buffer, isReRender,
@@ -68,6 +70,7 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
             return false;
         }
         GunState state = stack.get(HbmDataComponents.GUN_STATE.get());
-        return state != null && state.ammoCount() == 0 && ClientWeaponController.reloadIdle();
+        return state != null && state.ammoCount() == 0
+                && com.hbm.client.weapon.ClientWeaponController.reloadIdle();
     }
 }

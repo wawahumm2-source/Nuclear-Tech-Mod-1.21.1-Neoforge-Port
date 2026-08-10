@@ -34,7 +34,18 @@ File-local copyright or license notices from NEO EDITION remain controlling and 
 
 No Superb Warfare model, texture, animation, sound, or other asset may be imported into this repository without explicit authorization from its rights holder and a corresponding update to this notice. This restriction applies even when an asset is present in a public source tree or compiled JAR.
 
-No Superb Warfare code or asset is included by the dependency baseline. If GPL-3.0-covered code is adapted later, the implementing change must identify the source file and exact commit, preserve required notices, and remain compliant with GPL-3.0.
+The dependency baseline does not bundle Superb Warfare. The following source files contain
+GPL-3.0-covered code adaptations from the exact commit above and identify that provenance in
+file-local comments:
+
+- `src/main/java/com/hbm/client/weapon/render/SuperbGunPresentationState.java` adapts the continuous root-motion and nonlinear recoil-curve approach from `ClientEventHandler.kt` and the procedural pistol presentation in `M1911ItemModel.java`.
+- `src/main/java/com/hbm/client/weapon/render/HbmPlayerArmRenderer.java` adapts the Gecko-bone-bound local-player arm rendering sequence from `AnimationHelper.java`.
+- `src/main/java/com/hbm/client/weapon/render/HbmMuzzleFlashRenderer.java` adapts the model-bone-bound muzzle-flare quad technique from `AnimationHelper.java`.
+- `src/main/java/com/hbm/client/weapon/render/HbmGunGeoRenderer.java` follows the bone dispatch architecture of `SimpleGunRenderer.java`.
+
+All model coordinates, textures, sounds, animation resources, and weapon-specific rig values in
+the HBM implementation are independently authored for HBM assets. No Superb Warfare model,
+texture, animation, sound, or other visual asset is included.
 
 ## Framework Dependencies
 

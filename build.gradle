@@ -208,6 +208,14 @@ tasks.named('test', Test).configure {
     useJUnitPlatform()
 }
 
+// Stable release-gate name used by project documentation and automation. NeoForge generates the
+// actual executable task as runGameTestServer from the gameTestServer run configuration above.
+tasks.register('gameTestServer') {
+    group = 'verification'
+    description = 'Runs the NeoForge GameTest server release gate.'
+    dependsOn tasks.named('runGameTestServer')
+}
+
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

@@ -263,19 +263,30 @@ public final class ObjBakedGeoModelLoader {
                 : groups.containsKey("MainBody") ? "MainBody" : groups.keySet().iterator().next();
         Map<String, GeoBone> bones = new LinkedHashMap<>();
         Set<String> visiting = new HashSet<>();
-        GeoBone root = bakeBoneTree(rootName, rootName, groups, rig, bones, visiting);
+        // Superb Warfare's modern models separate camera/root presentation motion from the actual
+        // weapon mechanism. Synthesize that hierarchy around HBM's untouched OBJ groups so its
+        // animations can target "root" without baking presentation transforms into the artwork.
+        GeoBone camera = new GeoBone(null, "camera", Boolean.FALSE, 0.0D,
+                Boolean.FALSE, Boolean.FALSE);
+        GeoBone presentationRoot = new GeoBone(camera, "root", Boolean.FALSE, 0.0D,
+                Boolean.FALSE, Boolean.FALSE);
+        camera.getChildBones().add(presentationRoot);
+        GeoBone root = bakeBoneTree(rootName, rootName, groups, rig, bones, visiting, presentationRoot);
         for (String groupName : groups.keySet()) {
-            bakeBoneTree(groupName, rootName, groups, rig, bones, visiting);
+            bakeBoneTree(groupName, rootName, groups, rig, bones, visiting, presentationRoot);
         }
-        GunViewmodelProfile.find(location).ifPresent(profile -> profile.armAnchors().forEach(anchor -> {
-            GeoBone hand = new GeoBone(root, anchor.boneName(), Boolean.FALSE, 0.0D,
+        SuperbGunRig.find(location).ifPresent(frameworkRig -> frameworkRig.virtualBones().forEach(anchor -> {
+            GeoBone hand = new GeoBone(root, anchor.name(), Boolean.FALSE, 0.0D,
                     Boolean.FALSE, Boolean.FALSE);
             hand.setPivotX((float) anchor.pivot().x);
             hand.setPivotY((float) anchor.pivot().y);
             hand.setPivotZ((float) anchor.pivot().z);
+            hand.setRotX((float) Math.toRadians(anchor.rotationDegrees().x));
+            hand.setRotY((float) Math.toRadians(anchor.rotationDegrees().y));
+            hand.setRotZ((float) Math.toRadians(anchor.rotationDegrees().z));
             root.getChildBones().add(hand);
         }));
-        saveSnapshots(root);
+        saveSnapshots(camera);
 
         ModelProperties properties = new ModelProperties(
                 null, null, null, null, null, null, null, null, null, null,
@@ -288,11 +299,12 @@ public final class ObjBakedGeoModelLoader {
                 null
         );
         HbmNuclearTech.LOGGER.debug("Converted {} OBJ groups from {} into GeckoLib bones.", groups.size(), location);
-        return new BakedGeoModel(Collections.singletonList(root), properties);
+        return new BakedGeoModel(Collections.singletonList(camera), properties);
     }
 
     private static GeoBone bakeBoneTree(String name, String rootName, Map<String, ObjGroup> groups,
-                                        LegacyRig rig, Map<String, GeoBone> bones, Set<String> visiting) {
+                                        LegacyRig rig, Map<String, GeoBone> bones, Set<String> visiting,
+                                        GeoBone presentationRoot) {
         GeoBone existing = bones.get(name);
         if (existing != null) {
             return existing;
@@ -306,19 +318,18 @@ public final class ObjBakedGeoModelLoader {
         }
 
         boolean root = name.equals(rootName);
-        GeoBone parent = null;
+        GeoBone parent = presentationRoot;
         if (!root) {
             String requestedParent = rig.hierarchy().getOrDefault(name, rootName);
             if (requestedParent.equals(name) || !groups.containsKey(requestedParent)) {
                 requestedParent = rootName;
             }
-            parent = bakeBoneTree(requestedParent, rootName, groups, rig, bones, visiting);
+            parent = bakeBoneTree(requestedParent, rootName, groups, rig, bones, visiting,
+                    presentationRoot);
         }
         GeoBone bone = bakeBone(parent, group, root, rig.pivots().get(name));
         bones.put(name, bone);
-        if (parent != null) {
-            parent.getChildBones().add(bone);
-        }
+        parent.getChildBones().add(bone);
         visiting.remove(name);
         return bone;
     }

@@ -1,6 +1,7 @@
 package com.hbm.client.weapon;
 
 import com.hbm.HbmNuclearTech;
+import com.hbm.client.weapon.render.SuperbGunPresentationState;
 import com.hbm.config.HbmClientConfig;
 import com.hbm.item.HbmGunItem;
 import com.hbm.network.WeaponCommand;
@@ -101,6 +102,7 @@ public final class ClientWeaponController {
                 boolean predictedLiveRound = localState == null || localState.ammoCount() > 0;
                 if (predictedLiveRound) {
                     applyPredictedRecoil(minecraft);
+                    SuperbGunPresentationState.fire();
                     triggerAnimation(minecraft.player, "fire");
                 } else {
                     triggerAnimation(minecraft.player, "dry_fire");
@@ -128,6 +130,7 @@ public final class ClientWeaponController {
             authoritativeState = null;
             lastAuthoritativeStack = null;
             predictedRecoilPending = false;
+            SuperbGunPresentationState.reset();
         }
         boolean actionPlaying = authoritativeState != null
                 && authoritativeState.reloadPhase() != ReloadPhase.IDLE;
@@ -146,6 +149,7 @@ public final class ClientWeaponController {
         predictedAnimationTicks = Math.max(0, predictedAnimationTicks - 1);
         recoverRecoil(minecraft);
         updateAdsSensitivity(minecraft, valid && (lastAds || authoritativeState != null && authoritativeState.ads()));
+        SuperbGunPresentationState.tick(minecraft, valid);
         screenShake *= 0.78F;
     }
 
@@ -206,6 +210,7 @@ public final class ClientWeaponController {
             }
             if (changedStack) {
                 triggerAnimation(minecraft.player, "equip");
+                SuperbGunPresentationState.beginEquip();
                 lastPresentationPose = null;
             }
         }
@@ -218,8 +223,13 @@ public final class ClientWeaponController {
         }
 
         boolean local = minecraft.player != null && payload.sourceEntityId() == minecraft.player.getId();
+        boolean localFirstPerson = local && minecraft.options.getCameraType().isFirstPerson();
         if (payload.effect() == WeaponEffectType.FIRE && local) {
+            boolean alreadyPredicted = predictedRecoilPending;
             applyAuthoritativeRecoil(minecraft, payload);
+            if (!alreadyPredicted) {
+                SuperbGunPresentationState.fire();
+            }
             screenShake = Math.max(screenShake,
                     payload.pitch() * 0.12F * HbmClientConfig.SCREEN_SHAKE_SCALE.get().floatValue());
         }
@@ -243,10 +253,18 @@ public final class ClientWeaponController {
             }
         }
         switch (payload.effect()) {
-            case MUZZLE_FLASH -> minecraft.level.addParticle(ParticleTypes.FLAME,
-                    payload.x(), payload.y(), payload.z(), 0.0D, 0.004D, 0.0D);
-            case SMOKE -> minecraft.level.addParticle(ParticleTypes.SMOKE,
-                    payload.x(), payload.y(), payload.z(), 0.0D, 0.025D, 0.0D);
+            case MUZZLE_FLASH -> {
+                if (!localFirstPerson) {
+                    minecraft.level.addParticle(ParticleTypes.FLAME,
+                            payload.x(), payload.y(), payload.z(), 0.0D, 0.004D, 0.0D);
+                }
+            }
+            case SMOKE -> {
+                if (!localFirstPerson) {
+                    minecraft.level.addParticle(ParticleTypes.SMOKE,
+                            payload.x(), payload.y(), payload.z(), 0.0D, 0.025D, 0.0D);
+                }
+            }
             case CASING -> {
                 if (HbmClientConfig.CASING_PARTICLES.get()) {
                     Vec3 look = source == null ? new Vec3(0.0D, 0.0D, 1.0D) : source.getLookAngle();

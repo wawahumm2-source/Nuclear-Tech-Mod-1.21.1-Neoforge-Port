@@ -13,10 +13,14 @@ import net.minecraft.world.entity.player.PlayerModelPart;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.util.RenderUtil;
 
-/** Renders the local player's real skin and enabled sleeve layer over animated weapon hand bones. */
+/**
+ * Renders the local player's real skin and enabled sleeve layer over animated weapon hand bones.
+ * The Gecko bone transform/render sequence is adapted from Superb Warfare AnimationHelper at
+ * commit 9b5284f42ef79532e6fb7f03ab07425c693b0b43 (GPL-3.0).
+ */
 final class HbmPlayerArmRenderer {
     static void render(PoseStack poseStack, MultiBufferSource buffers, int packedLight,
-                       GeoBone bone, boolean left) {
+                       GeoBone bone, boolean left, RenderType gunRenderType) {
         Minecraft minecraft = Minecraft.getInstance();
         AbstractClientPlayer player = minecraft.player;
         if (player == null || !(minecraft.getEntityRenderDispatcher().getRenderer(player)
@@ -49,6 +53,9 @@ final class HbmPlayerArmRenderer {
             if (minecraft.options.isModelPartEnabled(sleevePart)) {
                 sleeve.render(poseStack, buffers.getBuffer(RenderType.entityTranslucent(skin)),
                         packedLight, OverlayTexture.NO_OVERLAY);
+            }
+            if (gunRenderType != null) {
+                buffers.getBuffer(gunRenderType);
             }
         } finally {
             poseStack.popPose();
