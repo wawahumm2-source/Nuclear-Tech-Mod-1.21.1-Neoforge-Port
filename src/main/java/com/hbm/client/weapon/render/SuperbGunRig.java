@@ -19,12 +19,14 @@ public record SuperbGunRig(
         ResourceLocation model,
         FirstPersonPose hip,
         FirstPersonPose ads,
+        float armScale,
         List<VirtualBone> virtualBones
 ) {
     private static final List<SuperbGunRig> RIGS = List.of(
             rig("star_f",
                     pose(0.27, -0.22, -0.30, -2.0F, 165.0F, -1.5F, 0.88F),
-                    pose(0.00, -0.23, -0.42, -0.5F, 180.0F, 0.0F, 0.94F),
+                    pose(0.12, 0.035, -0.40, -0.5F, 180.0F, 0.0F, 1.12F),
+                    0.76F,
                     new VirtualBone("Righthand", new Vec3(-0.10, -1.80, -3.10),
                             new Vec3(-72.0, 2.0, 180.0), BoneRole.RIGHT_HAND, 0.0F),
                     new VirtualBone("Lefthand", new Vec3(0.32, -1.20, -2.35),
@@ -34,6 +36,7 @@ public record SuperbGunRig(
             rig("stg77",
                     pose(0.30, -0.25, -0.42, -2.0F, 166.0F, -2.0F, 0.82F),
                     pose(0.00, -0.16, -0.50, 0.0F, 180.0F, 0.0F, 0.88F),
+                    1.0F,
                     new VirtualBone("Righthand", new Vec3(-0.08, -1.55, -3.20),
                             new Vec3(-70.0, 2.0, 180.0), BoneRole.RIGHT_HAND, 0.0F),
                     new VirtualBone("Lefthand", new Vec3(0.12, -0.70, 1.10),
@@ -43,6 +46,7 @@ public record SuperbGunRig(
             rig("spas-12",
                     pose(0.31, -0.24, -0.42, -2.0F, -14.0F, -2.0F, 0.90F),
                     pose(0.00, -0.17, -0.52, 0.0F, 0.0F, 0.0F, 0.96F),
+                    1.0F,
                     new VirtualBone("Righthand", new Vec3(-0.05, 0.10, 0.20),
                             new Vec3(-70.0, 0.0, 180.0), BoneRole.RIGHT_HAND, 0.0F),
                     new VirtualBone("Lefthand", new Vec3(0.05, 0.20, -4.80),
@@ -52,6 +56,7 @@ public record SuperbGunRig(
             rig("congolake",
                     pose(0.29, -0.24, -0.36, -2.0F, 166.0F, -2.0F, 1.02F),
                     pose(0.00, -0.18, -0.46, 0.0F, 180.0F, 0.0F, 1.08F),
+                    1.0F,
                     new VirtualBone("Righthand", new Vec3(-0.04, 0.75, -2.85),
                             new Vec3(-70.0, 2.0, 180.0), BoneRole.RIGHT_HAND, 0.0F),
                     new VirtualBone("Lefthand", new Vec3(0.08, 0.85, 0.40),
@@ -69,12 +74,14 @@ public record SuperbGunRig(
     }
 
     private static SuperbGunRig rig(String modelName, FirstPersonPose hip, FirstPersonPose ads,
+                                    float armScale,
                                     VirtualBone... bones) {
         return new SuperbGunRig(
                 ResourceLocation.fromNamespaceAndPath(
                         HbmNuclearTech.MOD_ID, "models/weapons/" + modelName + ".obj"),
                 hip,
                 ads,
+                armScale,
                 List.of(bones)
         );
     }

@@ -151,10 +151,14 @@ public final class ClientWeaponController {
         boolean actionPlaying = authoritativeState != null
                 && authoritativeState.reloadPhase() != ReloadPhase.IDLE;
         if (valid && !actionPlaying) {
-            String presentationPose = minecraft.player.isSprinting()
-                    ? "sprint"
-                    : !ads && shouldLowerAtWall(minecraft) ? "lower"
-                    : ads ? "ads" : "idle";
+            boolean targetPistol = isHoldingTargetPistol(minecraft);
+            // Procedural presentation already owns Target Pistol ADS and sprinting. Replaying
+            // Gecko pose clips on the same root doubled those transforms and caused the
+            // intermittent below-hotbar and sideways-hand transitions seen in the audit video.
+            String presentationPose = !ads && shouldLowerAtWall(minecraft)
+                    ? "lower"
+                    : targetPistol ? "idle"
+                    : minecraft.player.isSprinting() ? "sprint" : ads ? "ads" : "idle";
             if (!presentationPose.equals(lastPresentationPose)) {
                 triggerAnimation(minecraft.player, presentationPose);
                 lastPresentationPose = presentationPose;
@@ -438,11 +442,20 @@ public final class ClientWeaponController {
                 && minecraft.player.getMainHandItem().getItem() instanceof HbmGunItem;
     }
 
+    private static boolean isHoldingTargetPistol(Minecraft minecraft) {
+        if (!isHoldingGun(minecraft)) {
+            return false;
+        }
+        return minecraft.player.getMainHandItem().getItem() instanceof HbmGunItem gun
+                && TARGET_PISTOL.equals(gun.definitionId());
+    }
+
     private static void renderCrosshair(GuiGraphics graphics, Minecraft minecraft) {
         if (!minecraft.options.getCameraType().isFirstPerson() || minecraft.player == null) {
             return;
         }
-        if (!minecraft.player.isSprinting() && viewmodelAdsBlend() <= 0.20F) {
+        float currentAds = viewmodelAdsBlend();
+        if (!minecraft.player.isSprinting() && currentAds <= 0.20F) {
             int centerX = graphics.guiWidth() / 2
                     + Math.round(SuperbGunPresentationState.crosshairOffsetX());
             int centerY = graphics.guiHeight() / 2
@@ -457,6 +470,12 @@ public final class ClientWeaponController {
             horizontalLine(graphics, centerX + gap, centerX + gap + arm, centerY, shadow, white);
             verticalLine(graphics, centerX, centerY - gap - arm, centerY - gap, shadow, white);
             verticalLine(graphics, centerX, centerY + gap, centerY + gap + arm, shadow, white);
+        } else if (!minecraft.player.isSprinting()) {
+            // Preserve a restrained centre reference while the iron sights settle. The former
+            // hard disappearance made it impossible to distinguish aligned ADS from a bad pose.
+            int centerX = graphics.guiWidth() / 2;
+            int centerY = graphics.guiHeight() / 2;
+            graphics.fill(centerX, centerY, centerX + 1, centerY + 1, 0xB8FFFFFF);
         }
 
         if (hitMarkerTicks > 0) {

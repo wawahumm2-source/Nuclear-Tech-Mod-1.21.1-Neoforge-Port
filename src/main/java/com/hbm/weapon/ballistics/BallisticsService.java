@@ -213,6 +213,9 @@ public final class BallisticsService {
     }
 
     private static void broadcastTracer(ServerLevel level, ActiveRound round, Vec3 start, Vec3 end) {
+        if (round.tracerColor == 0) {
+            return;
+        }
         Vec3 delta = end.subtract(start);
         WeaponEffectPayload payload = new WeaponEffectPayload(
                 WeaponEffectType.TRACER,

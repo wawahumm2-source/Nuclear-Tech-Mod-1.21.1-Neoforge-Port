@@ -52,7 +52,8 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
                             virtualBone.pivot(), virtualBone.effectSize(), renderPerspective);
                 } else if (renderPerspective.firstPerson()) {
                     HbmPlayerArmRenderer.render(poseStack, buffers, packedLight, bone,
-                            virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND, renderType);
+                            virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND, renderType,
+                            rig.armScale());
                 }
                 return;
             }

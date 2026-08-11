@@ -168,12 +168,13 @@ public final class SuperbGunPresentationState {
         double verticalY = -2.0D * midpoint(previousVerticalVelocity, verticalVelocity)
                 * (1.0D - 0.5D * ads) / 16.0D;
 
-        double sprintCurve = 4.0D * sprintAmount * (1.0D - sprintAmount);
-        double sprintX = (3.5D * sprintAmount
-                + 2.0D * Math.sin(Math.PI * phase) * sprintAmount) / 16.0D;
-        double sprintY = ((-0.35D - 8.0D * sprintCurve) * sprintAmount
-                + Math.sin(2.0D * Math.PI * phase) * sprintAmount) / 16.0D;
-        double sprintZ = 2.45D * sprintAmount / 16.0D;
+        // Keep the sprint transition monotonic. The former midpoint parabola displaced the
+        // weapon by roughly half a block at 50% blend, dropping it below the hotbar.
+        double sprintX = (1.45D + 0.40D * Math.sin(Math.PI * phase))
+                * sprintAmount / 16.0D;
+        double sprintY = (-0.55D + 0.30D * Math.sin(2.0D * Math.PI * phase))
+                * sprintAmount / 16.0D;
+        double sprintZ = 0.90D * sprintAmount / 16.0D;
 
         poseStack.translate(x + (leftHand ? -bobX : bobX) + strafeX + sprintX,
                 base.y() + bobY + breathingY + verticalY + sprintY,
@@ -187,11 +188,11 @@ public final class SuperbGunPresentationState {
 
         poseStack.translate((leftHand ? -1.0D : 1.0D) * 0.28D * drawAmount,
                 -0.42D * drawAmount, 0.10D * drawAmount);
-        poseStack.mulPose(Axis.XP.rotationDegrees(39.0F * sprintAmount - 48.0F * drawAmount));
+        poseStack.mulPose(Axis.XP.rotationDegrees(22.0F * sprintAmount - 48.0F * drawAmount));
         poseStack.mulPose(Axis.YP.rotationDegrees((leftHand ? -1.0F : 1.0F)
-                * (35.6F * sprintAmount + 115.0F * drawAmount)));
+                * (22.0F * sprintAmount + 115.0F * drawAmount)));
         poseStack.mulPose(Axis.ZP.rotationDegrees((leftHand ? -1.0F : 1.0F)
-                * (34.7F * sprintAmount + 45.0F * drawAmount)));
+                * (18.0F * sprintAmount + 45.0F * drawAmount)));
 
         float swayScale = 1.0F - ads * 0.78F;
         float idleSway = (float) (-0.008D * Math.sin(swayTime) * (1.0D - 0.95D * ads));

@@ -20,7 +20,7 @@ import software.bernie.geckolib.util.RenderUtil;
  */
 final class HbmPlayerArmRenderer {
     static void render(PoseStack poseStack, MultiBufferSource buffers, int packedLight,
-                       GeoBone bone, boolean left, RenderType gunRenderType) {
+                       GeoBone bone, boolean left, RenderType gunRenderType, float armScale) {
         Minecraft minecraft = Minecraft.getInstance();
         AbstractClientPlayer player = minecraft.player;
         if (player == null || !(minecraft.getEntityRenderDispatcher().getRenderer(player)
@@ -42,6 +42,7 @@ final class HbmPlayerArmRenderer {
             RenderUtil.scaleMatrixForBone(poseStack, bone);
             RenderUtil.translateAwayFromPivotPoint(poseStack, bone);
             poseStack.translate(left ? -0.0625D : 0.0625D, 0.125D, 0.0D);
+            poseStack.scale(armScale, armScale, armScale);
 
             configure(arm, bone);
             configure(sleeve, bone);

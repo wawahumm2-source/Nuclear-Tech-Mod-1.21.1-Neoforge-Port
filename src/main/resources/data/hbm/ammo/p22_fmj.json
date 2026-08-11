@@ -10,5 +10,5 @@
   "drag": 0.006,
   "explosion": null,
   "impact_effect": "hbm:bullet",
-  "tracer_color": "E8D49B"
+  "tracer_color": "000000"
 }

@@ -698,6 +698,10 @@ function Validate-AmmoDefinition {
     if ($null -ne $tracerColor -and $tracerColor -cnotmatch '^#?[0-9A-Fa-f]{6}$') {
         Add-ValidationError "$Scope.tracer_color must be a six-digit RGB hexadecimal value."
     }
+    if ($Id -in @('hbm:p22_fmj', 'hbm:p22_ap') -and
+        $null -ne $tracerColor -and $tracerColor.TrimStart('#') -ne '000000') {
+        Add-ValidationError "$Scope must keep Target Pistol tracer particles disabled with tracer_color 000000."
+    }
 
     return [PSCustomObject]@{
         Id = $Id
@@ -907,6 +911,7 @@ function Validate-PilotRuntimeAssets {
     $armRendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmPlayerArmRenderer.java'
     $flareRendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmMuzzleFlashRenderer.java'
     $controllerSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\ClientWeaponController.java'
+    $ballisticsSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\weapon\ballistics\BallisticsService.java'
     if (-not (Test-Path -LiteralPath $bridgeSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $bridgeSource -SimpleMatch 'OBJ-to-Gecko bridge' -Quiet)) {
         Add-ValidationError 'The faithful OBJ-to-Gecko runtime geometry bridge is missing.'
@@ -938,6 +943,10 @@ function Validate-PilotRuntimeAssets {
         (Select-String -LiteralPath $rendererSource -SimpleMatch 'poseStack.translate(-0.5D, -0.51D, -0.5D)' -Quiet)) {
         Add-ValidationError 'The gun renderer contains the rejected first-person centering translation that hides the viewmodel below the hotbar.'
     }
+    if ((Test-Path -LiteralPath $presentationSource -PathType Leaf) -and
+        (Select-String -LiteralPath $presentationSource -SimpleMatch 'sprintCurve' -Quiet)) {
+        Add-ValidationError 'The gun presentation contains the rejected non-monotonic sprint curve that drops the viewmodel below the hotbar.'
+    }
     if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'player.getSkin().texture()' -Quiet)) {
         Add-ValidationError 'The first-person weapon renderer is not bound to the local player skin.'
@@ -952,6 +961,14 @@ function Validate-PilotRuntimeAssets {
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case MUZZLE_FLASH -> {' -Quiet) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (!localFirstPerson)' -Quiet)) {
         Add-ValidationError 'Local first-person muzzle flashes can regress to unsafe world-space particles.'
+    }
+    if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'targetPistol ? "idle"' -Quiet)) {
+        Add-ValidationError 'Target Pistol ADS and sprint pose clips can regress to double-transforming the procedural presentation root.'
+    }
+    if (-not (Test-Path -LiteralPath $ballisticsSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $ballisticsSource -SimpleMatch 'if (round.tracerColor == 0)' -Quiet)) {
+        Add-ValidationError 'Zero-colour ammunition no longer suppresses server tracer events.'
     }
     if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch $superbCommit -Quiet) -or

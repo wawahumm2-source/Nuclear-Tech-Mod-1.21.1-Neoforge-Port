@@ -19,6 +19,7 @@ This ledger separates implemented code from verified behavior. The first four-gu
 - Superb-style dynamic segmented crosshair, local hit/headshot feedback, and a bottom-right gun/ammunition panel rendered from HBM/vanilla primitives and item icons. Impact packets now carry the server-resolved shooter entity ID so feedback cannot be client-claimed.
 - HBM-authored presentation rigs for all four pilots. The failed Target Pistol profile and its near-camera world-space flash were removed; this corrected replacement build still requires in-game visual acceptance.
 - The Target Pistol is now the polished reference implementation: its handling baseline is Superb Warfare's MP-443, with corrected first-person placement, locally responsive eased ADS/FOV and sensitivity, continuous walk/sway/sprint/draw motion, nonlinear recoil and camera response, player-skin arms, and distinct 2.25-second tactical and 2.65-second empty reload sequences. The HBM mesh, texture, sounds, and `.22 LR` ammunition identity remain unchanged.
+- The narrated `19-59-01` comparison exposed stacked ADS/sprint/root animation, a non-monotonic sprint transition, oversized near-camera arms, duplicate root recoil, obstructive reload hand travel, and near-camera `END_ROD` tracers. The corrected Target Pistol uses one procedural root, a stable sprint blend, a smaller pistol-specific arm scale, constrained reload motion, and no `.22 LR` tracer particles; muzzle flash, casing ejection, and impact feedback remain.
 
 ## Automated Gate Evidence
 
@@ -34,7 +35,7 @@ This ledger separates implemented code from verified behavior. The first four-gu
 | Weapon validator | pass | 4 gun definitions, 8 ammo definitions, HBM sounds, animation-to-OBJ bone binding, item models, survival ammunition chain, and four legacy source sets validate. |
 | Dedicated-server smoke | pass | Server loaded KotlinForForge, GeckoLib, Curios, and HBM and installed weapon definition generation 1 with 4 guns and 8 ammo profiles. |
 | Client initialization smoke | pass | Client resource reload, OpenAL, texture atlases, and weapon definition generation completed with zero client error/fatal lines. This is not visual QA. |
-| Package contamination audit | pass | The corrected `hbm-0.1.0-alpha.jar` contains 12,349 entries, SHA-256 `53c4613d3508e77d36eadc0b1765ab7fa19dafa727d733c6092bc1c17d1f38c4`, and no Superb Warfare, SimpleBedrockModel, or `META-INF/jarjar` paths. |
+| Package contamination audit | pass | The corrected `hbm-0.1.0-alpha.jar` contains 12,349 entries, SHA-256 `f20dea0fbdb6e6a9afa7ef92f32150c869e858d08868e43e1a99adf97dfa1d5b`, and no Superb Warfare, SimpleBedrockModel, or `META-INF/jarjar` paths. |
 
 ## Quick Load
 

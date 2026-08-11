@@ -10,5 +10,5 @@
   "drag": 0.005,
   "explosion": null,
   "impact_effect": "hbm:armor_piercing",
-  "tracer_color": "D6F2FF"
+  "tracer_color": "000000"
 }
