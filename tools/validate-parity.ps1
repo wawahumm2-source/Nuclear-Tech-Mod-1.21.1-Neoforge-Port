@@ -187,22 +187,18 @@ if (Test-Path -LiteralPath $soundsJson) {
     }
 }
 
-$reloadedMushroom = Join-Path $assetRoot "hbm\models\effect\mush.obj"
-if (-not (Test-Path -LiteralPath $reloadedMushroom)) {
-    Add-Issue "Missing Reloaded mushroom model: $reloadedMushroom"
-} else {
-    $mushroomText = Get-Content -LiteralPath $reloadedMushroom -Raw
-    if ($mushroomText -notmatch "(?m)^o Stem\s*$" -or $mushroomText -notmatch "(?m)^o Ball\s*$") {
-        Add-Issue "Reloaded mushroom model is missing its Stem or Ball part: $reloadedMushroom"
+foreach ($asset in @(
+    @{ Path = "hbm\textures\particle\particle_base.png"; Sha256 = "CAB60F5502B307235135EE54EBDE9C081B00D61A009CCEEB221DD9213DDA3872" },
+    @{ Path = "hbm\textures\particle\flare.png"; Sha256 = "353FEB776F5E1E7CA2F036E95FB4C26442EBBD9366CAF6356756692C48CE1F50" }
+)) {
+    $path = Join-Path $assetRoot $asset.Path
+    if (-not (Test-Path -LiteralPath $path)) {
+        Add-Issue "Missing NTM Extended Torex asset: $path"
+        continue
     }
-}
-
-foreach ($folder in @("fireball", "fireball_lightmap")) {
-    foreach ($stage in 0..10) {
-        $texture = Join-Path $assetRoot "hbm\textures\models\explosion\$folder\fireball_$stage.png"
-        if (-not (Test-Path -LiteralPath $texture)) {
-            Add-Issue "Missing Reloaded mushroom texture stage: $texture"
-        }
+    $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+    if ($hash -ne $asset.Sha256) {
+        Add-Issue "Wrong NTM Extended Torex asset hash: $path -> $hash"
     }
 }
 
@@ -214,4 +210,4 @@ if ($issues.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Parity validation passed: JSON, HBM model/particle textures, Reloaded mushroom assets, and HBM sound references resolved."
+Write-Host "Parity validation passed: JSON, HBM model/particle textures, NTM Extended Torex assets, and HBM sound references resolved."

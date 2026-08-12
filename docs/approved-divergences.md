@@ -46,17 +46,17 @@ Tier 1 `EntityFalloutRain` is an invisible terrain-processing carrier with a cus
 
 The source-density default evaluates Little Boy against doubled strength `240`, retains its `120`-block travel limit, and uses source depth multiplier `1`. The configurable quadratic downward bias of `2.5` is now restricted to optional hybrid weak-hardware mode. It no longer changes the parity-default crater.
 
-## EXP-012: Bounded Reloaded ground-cloudlet rendering
+## EXP-012: Client quality caps for NTM Extended Torex cloudlets
 
-Reloaded 1.12.2 emits `age * 3` ground cloudlets every tick for the first 200 ticks, which can leave tens of thousands active at once. The port preserves the source 50-tick lifetime, `age * 2` radial envelope, terrain placement, gray palette, fade, and scale curve, but caps active cloudlets at `2400`, `1000`, or `240` by quality. The persistent pressure-front pool remains separately bounded at `1800`, `800`, or `240`. This is a performance wrapper around the Reloaded event, not an exact particle-count claim.
+NTM Extended 3.0.3 permits up to `20,000` standard Torex cloudlets and adds its early shock, ring, and condensation populations. `FULL` preserves that source ceiling and spawn equations. `REDUCED` and `MINIMAL` retain the source lifecycle, motion, heat, color, alpha, and scale equations while capping the active client population at `6,000` and `2,000`. These lower modes are performance wrappers and must not be described as exact particle-density parity.
 
 ## EXP-013: Time-bounded large-blast acceleration
 
 Large nuclear jobs retain their source ray sequence and resistance math, but immutable planning uses two bounded workers with `8192`-ray batches and excavation permits `8192` blocks per tick by default. Main-thread snapshot, scheduler, and mutation deadlines remain authoritative. Actual block deletion still begins only after planning, because deleting terrain during ray collection would change the resistance seen by later rays.
 
-## EXP-014: Reloaded radius-dependent mushroom-cloud lifetime
+## EXP-014: NTM Extended source-scaled mushroom-cloud lifetime
 
-Tier 1 removes the Little Boy Torex after `45 * 20 * 1.5` ticks. Reloaded 1.12.2 instead calculates `EntityNukeCloudSmall` lifetime as `max(300, 0.55 * (radius + 16)^2)` ticks and scrolls the mushroom texture throughout that life. The active visual now follows Reloaded directly: source-radius `120` lasts `10172` ticks, approximately eight minutes and twenty-nine seconds, and uses its radius-scaled eleven-stage fireball sequence plus continuous UV rise. The former configurable five-minute floor has been removed. A modern alpha fade occupies the final ten percent so the mesh does not disappear in one frame. This presentation choice changes no server explosion, fallout, damage, or radiation behavior.
+NTM Extended 3.0.3 scales `EntityNukeTorex` with `clamp(radius * 0.01, 0.25, 5)` and removes it after the float calculation `(int) (45 * 20 * scale)`. Little Boy radius `120` therefore uses the represented float scale near `1.2` and lasts `1,079` ticks, approximately 54 seconds. The parent alpha remains full for three quarters of that life and fades during the final quarter, exactly following the Extended source equations. This changes no server explosion, fallout, damage, or radiation behavior.
 
 ## EXP-015: Blast terrain conversion timing
 
@@ -86,6 +86,6 @@ Large crater excavation still uses `Level.setBlock` on the server thread so bloc
 
 Tier 1 converts grass to Sellafield Slaked only through the inner 45 percent bands and otherwise leaves surviving grass unchanged. The port converts surviving grass outside those bands, but still inside the Fallout Rain radius, to Waste Earth. This Reloaded/Waldemar-informed extension provides the approved dead-ground aftermath without broadening Sellafield stages. Mycelium continues to use Tier 1's Waste Mycelium result.
 
-## EXP-022: Reloaded fixed-mesh visual authority
+## EXP-022: NTM Extended 3.0.3 nuclear-visual authority
 
-Mr. Hummithy selected NTM Reloaded 1.12.2 as the primary nuclear-visual reference. Little Boy and the prototype nuclear carrier therefore render Reloaded's original `mush.obj`, eleven diffuse fireball textures, eleven emissive lightmaps, cap-width animation, texture-rise cadence, and radius-derived lifetime instead of the prior Torex particle sculpture and 25-frame billboard bridge. Modern pressure-wave, flash/blindness, camera-shake, quality caps, and final fade wrappers remain because the legacy fixed-function OpenGL implementation cannot be copied directly into NeoForge 1.21.1.
+Mr. Hummithy selected NTM Extended 1.12.2 version `3.0.3` as the nuclear-visual authority and rejected the Reloaded fixed mesh. Little Boy and the prototype carrier now use Extended's `EntityNukeTorex` lifecycle and `RenderTorex` presentation: toroidal cloudlet convection, rising stem emitter, growing cap roller, hot-to-cold palette, early shock cloudlets, source humidity-driven condensation rings, source flare, radial flash geometry, source lifetime, and delayed hurt-camera impact. The exact Extended `particle_base.png` and `flare.png` assets are active. NeoForge render types, deterministic visual seeds, client quality caps, and the configurable full-screen overexposure remain modern wrappers. Fallout Rain, terrain destruction, Sellafield conversion, water handling, radiation, and the server scheduler remain separate systems.

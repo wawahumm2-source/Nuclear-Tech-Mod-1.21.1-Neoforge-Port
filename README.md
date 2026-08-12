@@ -82,3 +82,8 @@ The original project licensing files are included:
 - `LICENSE.LESSER`
 
 Retain upstream credits when porting original assets, mechanics, and code.
+
+The nuclear Torex presentation is derived from NTM Extended 1.12.2 version `3.0.3`, specifically its GPL-3.0 `EntityNukeTorex` and `RenderTorex` implementation and associated `particle_base.png` and `flare.png` assets:
+
+- NTM Extended source: https://github.com/Alcatergit/Hbm-s-Nuclear-Tech-GIT
+- Reference tag: `NTM-Extended-1.12.2-3.0.3.jar` (`cef4640216b362e3be67fa8be2e63a3cc6903729`)

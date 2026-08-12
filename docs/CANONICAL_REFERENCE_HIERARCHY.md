@@ -24,6 +24,11 @@ This file is the single authority for how references are used in the 1.21.1 NeoF
 - Use Well-Forged and Modernized only for invisible engineering improvements or architecture ideas.
 - The current port is never an authority. If it disagrees with Tier 1, the current port has a parity defect.
 
+### Approved subsystem authority
+
+- Nuclear mushroom-cloud presentation is the sole current exception to the general migration hierarchy. NTM Extended 1.12.2 version `3.0.3` is authoritative for the client cloud lifecycle, cloudlet motion, palette, condensation, flare, world-space flash geometry, shock-front presentation, and visual lifetime. Tier 1 remains authoritative for the bomb carrier, yield, damage, radiation, crater, terrain conversion, fallout, sounds, recipes, and progression.
+- This exception does not promote NTM Extended above Tier 1 for any other system. It exists because Mr. Hummithy explicitly selected the Extended visual presentation and rejected the Reloaded fixed-mesh presentation.
+
 ## Workflow
 
 For a system-level decision, compare relevant references before implementation:

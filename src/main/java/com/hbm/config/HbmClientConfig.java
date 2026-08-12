@@ -32,7 +32,7 @@ public final class HbmClientConfig {
         private Client(ModConfigSpec.Builder builder) {
             builder.comment("Client-only nuclear flash, shock front, and mushroom cloud presentation.").push("nuclearVisuals");
             this.nuclearVisualQuality = builder
-                    .comment("FULL keeps the source event timeline with bounded cloudlets. REDUCED and MINIMAL lower particle density only.")
+                    .comment("FULL keeps NTM Extended's 20,000-cloudlet ceiling. REDUCED and MINIMAL lower particle density only.")
                     .defineEnum("quality", NuclearVisualQuality.FULL);
             this.enableNuclearFlash = builder
                     .comment("Shows the source-style immediate white-yellow nuclear flash when it is visible to the client.")

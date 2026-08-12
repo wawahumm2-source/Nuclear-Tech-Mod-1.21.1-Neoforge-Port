@@ -28,7 +28,7 @@ Classification: framework
 
 ## Visual Follow-Up Status
 
-- Little Boy now uses Reloaded 1.12.2's original fixed mushroom mesh, diffuse and emissive fireball stages, bounded ground cloudlets, world flare, flash, pressure front, shock-arrival camera response, and post-crater Fallout Rain presentation. These remain under visual parity review rather than being treated as exact.
+- Little Boy now uses NTM Extended 1.12.2 version `3.0.3` for its dynamic Torex cloudlets, toroidal cap, rising stem, humidity-driven condensation, flare, radial flash geometry, and shock-arrival camera response. The separate server crater, Sellafield, water, fallout, damage, and radiation systems retain their existing authorities. Matched live visual review remains required before this presentation can be marked exact.
 - The Low Yield shrapnel set and exact profile-specific `muke` particle behavior remain deferred.
 - The source screwdriver/defuser tools are not active in the current alpha, so their TNT interactions remain pending tool-family work.
 

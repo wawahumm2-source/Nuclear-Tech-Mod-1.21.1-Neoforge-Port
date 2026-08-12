@@ -1,11 +1,14 @@
 package com.hbm.client.explosion;
 
-/** Finite-value port of the Tier 1 Torex two-dimensional convection field. */
+/** Finite-value port of the NTM Extended 3.0.3 Torex two-dimensional convection field. */
 final class NuclearCloudMotion {
     private static final double EPSILON = 1.0E-5D;
 
     static Motion convection(double radialDistance, double relativeY, double azimuth,
             double torusWidth, double coreHeight, double rollerSize, double rangeModifier) {
+        if (radialDistance > torusWidth * 2D) {
+            return Motion.ZERO;
+        }
         return toroidal(radialDistance, relativeY, azimuth, torusWidth, coreHeight,
                 rollerSize * rangeModifier);
     }

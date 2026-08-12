@@ -49,6 +49,7 @@ repo/
 .agents/
 .codex/
 .tooling/
+.references/
 mdk.zip
 mdk-src/
 parisitey-neoforge/
