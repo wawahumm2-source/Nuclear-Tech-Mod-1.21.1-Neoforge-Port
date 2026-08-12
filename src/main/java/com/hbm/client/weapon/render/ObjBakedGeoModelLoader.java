@@ -271,21 +271,62 @@ public final class ObjBakedGeoModelLoader {
         GeoBone presentationRoot = new GeoBone(camera, "root", Boolean.FALSE, 0.0D,
                 Boolean.FALSE, Boolean.FALSE);
         camera.getChildBones().add(presentationRoot);
-        GeoBone root = bakeBoneTree(rootName, rootName, groups, rig, bones, visiting, presentationRoot);
-        for (String groupName : groups.keySet()) {
-            bakeBoneTree(groupName, rootName, groups, rig, bones, visiting, presentationRoot);
-        }
-        SuperbGunRig.find(location).ifPresent(frameworkRig -> frameworkRig.virtualBones().forEach(anchor -> {
-            GeoBone hand = new GeoBone(root, anchor.name(), Boolean.FALSE, 0.0D,
+        SuperbGunRig frameworkRig = SuperbGunRig.find(location).orElse(null);
+        boolean normalizedModelSpace = frameworkRig != null
+                && !frameworkRig.modelPose().isIdentity();
+
+        // The Star-F OBJ uses HBM's forward-positive-Z convention while Superb Warfare's
+        // first-person hands use forward-negative-Z. Keep those transforms on separate bones:
+        // animations move the shared Gun controller, model_space fixes only OBJ geometry, and
+        // player hands remain in the unmirrored viewmodel coordinate system.
+        GeoBone controller = null;
+        GeoBone geometryParent = presentationRoot;
+        String bakedRootName = rootName;
+        if (normalizedModelSpace) {
+            controller = new GeoBone(presentationRoot, rootName, Boolean.FALSE, 0.0D,
                     Boolean.FALSE, Boolean.FALSE);
-            hand.setPivotX((float) anchor.pivot().x);
-            hand.setPivotY((float) anchor.pivot().y);
-            hand.setPivotZ((float) anchor.pivot().z);
-            hand.setRotX((float) Math.toRadians(anchor.rotationDegrees().x));
-            hand.setRotY((float) Math.toRadians(anchor.rotationDegrees().y));
-            hand.setRotZ((float) Math.toRadians(anchor.rotationDegrees().z));
-            root.getChildBones().add(hand);
-        }));
+            presentationRoot.getChildBones().add(controller);
+            GeoBone modelSpace = new GeoBone(controller, "model_space", Boolean.FALSE, 0.0D,
+                    Boolean.FALSE, Boolean.FALSE);
+            SuperbGunRig.ModelPose modelPose = frameworkRig.modelPose();
+            // Gecko negates animation-space X during rendering. Store author-facing X as the
+            // intuitive visual direction so increasing it moves the mesh right on screen.
+            modelSpace.setPosX((float) -modelPose.translation().x);
+            modelSpace.setPosY((float) modelPose.translation().y);
+            modelSpace.setPosZ((float) modelPose.translation().z);
+            modelSpace.setRotX((float) Math.toRadians(modelPose.rotationDegrees().x));
+            modelSpace.setRotY((float) Math.toRadians(modelPose.rotationDegrees().y));
+            modelSpace.setRotZ((float) Math.toRadians(modelPose.rotationDegrees().z));
+            modelSpace.setScaleX(modelPose.scale());
+            modelSpace.setScaleY(modelPose.scale());
+            modelSpace.setScaleZ(modelPose.scale());
+            controller.getChildBones().add(modelSpace);
+            geometryParent = modelSpace;
+            bakedRootName = rootName + "_mesh";
+        }
+
+        GeoBone root = bakeBoneTree(rootName, rootName, groups, rig, bones, visiting,
+                geometryParent, bakedRootName);
+        for (String groupName : groups.keySet()) {
+            bakeBoneTree(groupName, rootName, groups, rig, bones, visiting,
+                    geometryParent, bakedRootName);
+        }
+        if (frameworkRig != null) {
+            GeoBone handParent = normalizedModelSpace ? controller : root;
+            frameworkRig.virtualBones().forEach(anchor -> {
+                GeoBone anchorParent = anchor.role() == SuperbGunRig.BoneRole.MUZZLE_FLASH
+                        ? root : handParent;
+                GeoBone hand = new GeoBone(anchorParent, anchor.name(), Boolean.FALSE, 0.0D,
+                        Boolean.FALSE, Boolean.FALSE);
+                hand.setPivotX((float) anchor.pivot().x);
+                hand.setPivotY((float) anchor.pivot().y);
+                hand.setPivotZ((float) anchor.pivot().z);
+                hand.setRotX((float) Math.toRadians(anchor.rotationDegrees().x));
+                hand.setRotY((float) Math.toRadians(anchor.rotationDegrees().y));
+                hand.setRotZ((float) Math.toRadians(anchor.rotationDegrees().z));
+                anchorParent.getChildBones().add(hand);
+            });
+        }
         saveSnapshots(camera);
 
         ModelProperties properties = new ModelProperties(
@@ -304,7 +345,7 @@ public final class ObjBakedGeoModelLoader {
 
     private static GeoBone bakeBoneTree(String name, String rootName, Map<String, ObjGroup> groups,
                                         LegacyRig rig, Map<String, GeoBone> bones, Set<String> visiting,
-                                        GeoBone presentationRoot) {
+                                        GeoBone presentationRoot, String bakedRootName) {
         GeoBone existing = bones.get(name);
         if (existing != null) {
             return existing;
@@ -325,17 +366,19 @@ public final class ObjBakedGeoModelLoader {
                 requestedParent = rootName;
             }
             parent = bakeBoneTree(requestedParent, rootName, groups, rig, bones, visiting,
-                    presentationRoot);
+                    presentationRoot, bakedRootName);
         }
-        GeoBone bone = bakeBone(parent, group, root, rig.pivots().get(name));
+        GeoBone bone = bakeBone(parent, group, root, rig.pivots().get(name),
+                root ? bakedRootName : group.name);
         bones.put(name, bone);
         parent.getChildBones().add(bone);
         visiting.remove(name);
         return bone;
     }
 
-    private static GeoBone bakeBone(GeoBone parent, ObjGroup group, boolean root, Vec3 authoredPivot) {
-        GeoBone bone = new GeoBone(parent, group.name, Boolean.FALSE, 0.0D, Boolean.FALSE, Boolean.FALSE);
+    private static GeoBone bakeBone(GeoBone parent, ObjGroup group, boolean root, Vec3 authoredPivot,
+                                    String bakedName) {
+        GeoBone bone = new GeoBone(parent, bakedName, Boolean.FALSE, 0.0D, Boolean.FALSE, Boolean.FALSE);
         if (!root && group.bounds.initialized) {
             Vec3 pivot = authoredPivot != null
                     ? authoredPivot

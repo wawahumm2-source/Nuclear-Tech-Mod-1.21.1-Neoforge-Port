@@ -3,6 +3,7 @@ package com.hbm.item;
 import com.hbm.client.weapon.render.HbmGunGeoRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animatable.client.GeoRenderProvider;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
@@ -76,6 +77,17 @@ public final class HbmGunItem extends Item implements GeoItem {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return animationCache;
+    }
+
+    /**
+     * Gun-state components change when a round is fired, ADS is acknowledged, or a reload
+     * transfers ammunition. Those state-only changes must not make Minecraft lower and redraw
+     * the held item as though the player selected a different weapon.
+     */
+    @Override
+    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack,
+                                                boolean slotChanged) {
+        return slotChanged || oldStack.getItem() != newStack.getItem();
     }
 
     @Override

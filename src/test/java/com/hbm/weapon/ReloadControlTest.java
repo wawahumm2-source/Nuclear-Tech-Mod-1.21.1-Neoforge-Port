@@ -11,6 +11,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReloadControlTest {
     @Test
+    void unqueuedSprintStillBlocksTriggerProcessing() {
+        assertFalse(HbmWeaponService.triggerAllowed(true));
+        assertTrue(HbmWeaponService.triggerAllowed(false));
+        assertTrue(HbmWeaponService.triggerAllowed(true, true));
+    }
+
+    @Test
+    void adsBypassesSprintFireTransitionRegardlessOfTransientSprintState() {
+        assertFalse(HbmWeaponService.shouldQueueSprintFire(true, true, true));
+        assertFalse(HbmWeaponService.shouldQueueSprintFire(true, true, false));
+        assertTrue(HbmWeaponService.shouldQueueSprintFire(false, true, false));
+        assertTrue(HbmWeaponService.shouldQueueSprintFire(false, false, true));
+    }
+
+    @Test
     void perRoundTriggerInterruptsBeforeTheNextInsertion() {
         GunDefinition.ReloadProfile reload = WeaponTestFixtures.gun("gun_spas12").getReload();
         WeaponSession session = new WeaponSession();

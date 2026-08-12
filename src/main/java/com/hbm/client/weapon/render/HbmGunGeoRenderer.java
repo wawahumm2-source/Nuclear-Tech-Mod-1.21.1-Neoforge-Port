@@ -5,6 +5,7 @@ import com.hbm.registry.HbmDataComponents;
 import com.hbm.weapon.state.GunState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -25,12 +26,19 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext displayContext, PoseStack poseStack,
                              MultiBufferSource buffers, int packedLight, int packedOverlay) {
+        if (displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
+                || displayContext == ItemDisplayContext.THIRD_PERSON_LEFT_HAND) {
+            return;
+        }
         poseStack.pushPose();
         try {
             if (displayContext.firstPerson() && stack.getItem() instanceof HbmGunItem gun) {
                 SuperbGunRig.find(gun.modelResource()).ifPresent(rig ->
                         SuperbGunPresentationState.applyFirstPerson(
-                                poseStack, rig, displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND));
+                                poseStack, rig,
+                                displayContext == ItemDisplayContext.FIRST_PERSON_LEFT_HAND,
+                                Minecraft.getInstance().getTimer()
+                                        .getGameTimeDeltaPartialTick(true)));
             }
             super.renderByItem(stack, displayContext, poseStack, buffers, packedLight, packedOverlay);
         } finally {
@@ -45,15 +53,32 @@ public final class HbmGunGeoRenderer extends GeoItemRenderer<HbmGunItem> {
                                   int packedLight, int packedOverlay, int renderColor) {
         SuperbGunRig rig = SuperbGunRig.find(gun.modelResource()).orElse(null);
         if (rig != null) {
+            if ("model_space".equals(bone.getName())) {
+                TargetPistolCalibrationState.applyToModelSpace(bone, rig, renderPerspective);
+                if (renderPerspective.firstPerson()
+                        && TargetPistolCalibrationState.markersVisible()) {
+                    TargetPistolCalibrationMarkerRenderer.renderModelAnchors(
+                            poseStack, buffers, bone);
+                }
+            }
             SuperbGunRig.VirtualBone virtualBone = rig.virtualBone(bone.getName()).orElse(null);
             if (virtualBone != null) {
                 if (virtualBone.role() == SuperbGunRig.BoneRole.MUZZLE_FLASH) {
-                    HbmMuzzleFlashRenderer.render(poseStack, buffers, packedLight, bone,
-                            virtualBone.pivot(), virtualBone.effectSize(), renderPerspective);
+                    if (renderPerspective.firstPerson()) {
+                        HbmMuzzleFlashRenderer.render(poseStack, buffers, packedLight, bone,
+                                virtualBone.pivot(), virtualBone.effectSize(), renderPerspective);
+                    }
                 } else if (renderPerspective.firstPerson()) {
+                    TargetPistolCalibrationState.applyToHandBone(
+                            bone, rig, virtualBone.role());
+                    if (TargetPistolCalibrationState.markersVisible()) {
+                        TargetPistolCalibrationMarkerRenderer.renderFixedHandAnchor(
+                                poseStack, buffers, bone,
+                                virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND);
+                    }
                     HbmPlayerArmRenderer.render(poseStack, buffers, packedLight, bone,
                             virtualBone.role() == SuperbGunRig.BoneRole.LEFT_HAND, renderType,
-                            rig.armScale());
+                            TargetPistolCalibrationState.armScale(rig));
                 }
                 return;
             }

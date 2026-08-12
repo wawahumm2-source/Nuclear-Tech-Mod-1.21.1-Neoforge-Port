@@ -6,9 +6,9 @@
   "armor_penetration": 0.55,
   "pellet_count": 1,
   "spread_multiplier": 1.0,
-  "gravity": 0.011,
-  "drag": 0.005,
+  "gravity": 0.0245,
+  "drag": 0.001,
   "explosion": null,
   "impact_effect": "hbm:armor_piercing",
-  "tracer_color": "000000"
+  "tracer_color": "FFB85C"
 }

@@ -10,6 +10,7 @@ import com.hbm.world.damage.HbmDamageTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -201,22 +202,45 @@ public final class BallisticsService {
 
     private static void applyEntityHit(ServerLevel level, Entity shooter, EntityHitResult hit, ActiveRound round) {
         Entity target = hit.getEntity();
-        boolean headshot = target instanceof LivingEntity living
+        LivingEntity livingTarget = target instanceof LivingEntity living ? living : null;
+        boolean headshot = livingTarget != null
                 && !target.getType().is(HbmWeaponTags.NO_HEADSHOTS)
-                && hit.getLocation().y >= living.getBoundingBox().minY + living.getBbHeight() * 0.72D;
+                && hit.getLocation().y >= livingTarget.getBoundingBox().minY
+                + livingTarget.getBbHeight() * 0.72D;
         float totalDamage = round.damage * (headshot ? round.headshotMultiplier : 1.0F);
-        target.hurt(headshot
+        boolean aliveBefore = livingTarget != null && livingTarget.isAlive();
+        boolean damageApplied = target.hurt(headshot
                 ? HbmDamageTypes.headshot(level, shooter, round.armorPenetration)
                 : HbmDamageTypes.gunfire(level, shooter, round.armorPenetration), totalDamage);
-        broadcastEffect(level, round, headshot ? WeaponEffectType.HEADSHOT : WeaponEffectType.IMPACT,
+        // Impact particles describe the world collision. They never imply confirmed damage.
+        broadcastEffect(level, round, WeaponEffectType.IMPACT,
                 hit.getLocation(), round.impactEffect, headshot ? 1 : 0);
+
+        boolean killed = damageApplied && aliveBefore && livingTarget != null
+                && (livingTarget.isDeadOrDying() || livingTarget.getHealth() <= 0.0F);
+        WeaponEffectType confirmation = confirmationEffect(damageApplied, headshot, killed);
+        if (confirmation != null) {
+            sendConfirmation(shooter, round, confirmation, hit.getLocation(),
+                    headshot ? 1 : 0);
+        }
+    }
+
+    static WeaponEffectType confirmationEffect(boolean damageApplied, boolean headshot,
+                                                boolean killed) {
+        if (!damageApplied) {
+            return null;
+        }
+        if (killed) {
+            return headshot ? WeaponEffectType.HEADSHOT_KILL : WeaponEffectType.KILL;
+        }
+        return headshot ? WeaponEffectType.HEADSHOT : WeaponEffectType.HIT;
     }
 
     private static void broadcastTracer(ServerLevel level, ActiveRound round, Vec3 start, Vec3 end) {
         if (round.tracerColor == 0) {
             return;
         }
-        Vec3 delta = end.subtract(start);
+        Entity shooter = level.getEntity(round.shooterId);
         WeaponEffectPayload payload = new WeaponEffectPayload(
                 WeaponEffectType.TRACER,
                 round.gunId,
@@ -224,9 +248,12 @@ public final class BallisticsService {
                 start.x,
                 start.y,
                 start.z,
-                (float) delta.x,
-                (float) delta.y,
-                -1,
+                end.x,
+                end.y,
+                end.z,
+                0.0F,
+                0.0F,
+                shooter == null ? -1 : shooter.getId(),
                 round.tracerColor
         );
         PacketDistributor.sendToPlayersNear(level, null, start.x, start.y, start.z, 160.0D, payload);
@@ -239,6 +266,17 @@ public final class BallisticsService {
         PacketDistributor.sendToPlayersNear(level, null, position.x, position.y, position.z, 96.0D,
                 new WeaponEffectPayload(type, round.gunId, resource,
                         position.x, position.y, position.z, 0.0F, 0.0F, sourceEntityId, variant));
+    }
+
+    private static void sendConfirmation(Entity shooter, ActiveRound round, WeaponEffectType type,
+                                         Vec3 position, int variant) {
+        if (!(shooter instanceof ServerPlayer player)) {
+            return;
+        }
+        PacketDistributor.sendToPlayer(player,
+                new WeaponEffectPayload(type, round.gunId, round.impactEffect,
+                        position.x, position.y, position.z, 0.0F, 0.0F,
+                        shooter.getId(), variant));
     }
 
     public static Vec3 spreadDirection(Vec3 direction, double spreadDegrees, RandomSource random) {

@@ -15,7 +15,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
 
 public final class HbmPayloads {
-    private static final String NETWORK_VERSION = "5";
+    private static final String NETWORK_VERSION = "7";
     private static Consumer<PlayerRadiationPayload> clientRadiationHandler = ignored -> {
     };
     private static Consumer<ClientEffectPayload> clientEffectHandler = ignored -> {

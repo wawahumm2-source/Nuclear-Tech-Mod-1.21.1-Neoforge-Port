@@ -7,7 +7,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$gradle = Join-Path $root "gradlew.bat"
+. (Join-Path $PSScriptRoot 'gradle-bootstrap.ps1')
+$gradle = Get-HbmGradleCommand -ProjectRoot $root
 $verificationDirectory = Join-Path $root "build\verification"
 $gameDirectory = Join-Path $root "run-server-smoke"
 $serverProperties = Join-Path $gameDirectory "server.properties"

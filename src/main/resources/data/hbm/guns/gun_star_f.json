@@ -8,7 +8,9 @@
   "ads": {
     "fov_multiplier": 0.82,
     "movement_multiplier": 0.78,
-    "sensitivity_multiplier": 0.76
+    "sensitivity_multiplier": 0.76,
+    "zero_pitch_degrees": 0.65,
+    "zero_distance": 50.0
   },
   "movement_weight": 0.12,
   "spread": {
@@ -35,8 +37,8 @@
   },
   "damage": 5.0,
   "headshot_multiplier": 1.8,
-  "velocity": 5.5,
-  "range": 96.0,
+  "velocity": 16.0,
+  "range": 500.0,
   "behavior": "hbm:standard",
   "sounds": {
     "fire": "hbm:weapon.fire.pistollight",

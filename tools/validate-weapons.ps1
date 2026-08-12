@@ -512,10 +512,18 @@ function Validate-GunDefinition {
 
     $ads = Get-ObjectField $Json 'ads' $Scope
     if ($null -ne $ads) {
-        Assert-Fields $ads @('fov_multiplier', 'movement_multiplier', 'sensitivity_multiplier') @('fov_multiplier', 'movement_multiplier', 'sensitivity_multiplier') "$Scope.ads"
+        $requiredAdsFields = @('fov_multiplier', 'movement_multiplier', 'sensitivity_multiplier')
+        $allowedAdsFields = $requiredAdsFields + @('zero_pitch_degrees', 'zero_distance')
+        Assert-Fields $ads $requiredAdsFields $allowedAdsFields "$Scope.ads"
         Test-InRange (Get-NumberField $ads 'fov_multiplier' "$Scope.ads") 0.05 1 "$Scope.ads.fov_multiplier"
         Test-InRange (Get-NumberField $ads 'movement_multiplier' "$Scope.ads") 0.05 1 "$Scope.ads.movement_multiplier"
         Test-InRange (Get-NumberField $ads 'sensitivity_multiplier' "$Scope.ads") 0.05 1 "$Scope.ads.sensitivity_multiplier"
+        if (Test-HasProperty $ads 'zero_pitch_degrees') {
+            Test-InRange (Get-NumberField $ads 'zero_pitch_degrees' "$Scope.ads") -10 10 "$Scope.ads.zero_pitch_degrees"
+        }
+        if (Test-HasProperty $ads 'zero_distance') {
+            Test-InRange (Get-NumberField $ads 'zero_distance' "$Scope.ads") 0 1024 "$Scope.ads.zero_distance"
+        }
     }
 
     Test-InRange (Get-NumberField $Json 'movement_weight' $Scope) 0 1 "$Scope.movement_weight"
@@ -698,9 +706,14 @@ function Validate-AmmoDefinition {
     if ($null -ne $tracerColor -and $tracerColor -cnotmatch '^#?[0-9A-Fa-f]{6}$') {
         Add-ValidationError "$Scope.tracer_color must be a six-digit RGB hexadecimal value."
     }
-    if ($Id -in @('hbm:p22_fmj', 'hbm:p22_ap') -and
-        $null -ne $tracerColor -and $tracerColor.TrimStart('#') -ne '000000') {
-        Add-ValidationError "$Scope must keep Target Pistol tracer particles disabled with tracer_color 000000."
+    $targetPistolTracerColors = @{
+        'hbm:p22_fmj' = 'FFD27A'
+        'hbm:p22_ap' = 'FFB85C'
+    }
+    if ($targetPistolTracerColors.ContainsKey($Id) -and
+        $null -ne $tracerColor -and
+        $tracerColor.TrimStart('#').ToUpperInvariant() -ne $targetPistolTracerColors[$Id]) {
+        Add-ValidationError "$Scope must use the approved visible Target Pistol tracer color $($targetPistolTracerColors[$Id])."
     }
 
     return [PSCustomObject]@{
@@ -909,8 +922,15 @@ function Validate-PilotRuntimeAssets {
     $presentationSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\SuperbGunPresentationState.java'
     $rendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmGunGeoRenderer.java'
     $armRendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmPlayerArmRenderer.java'
+    $calibrationSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\TargetPistolCalibrationState.java'
+    $calibrationMarkerSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\TargetPistolCalibrationMarkerRenderer.java'
     $flareRendererSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\render\HbmMuzzleFlashRenderer.java'
     $controllerSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\ClientWeaponController.java'
+    $clientSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\HbmNuclearTechClient.java'
+    $armPoseSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\client\weapon\HbmGunArmPose.java'
+    $weaponServiceSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\weapon\HbmWeaponService.java'
+    $targetItemModel = Join-Path $ProjectRoot 'src\main\resources\assets\hbm\models\item\gun_star_f.json'
+    $gunItemSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\item\HbmGunItem.java'
     $ballisticsSource = Join-Path $ProjectRoot 'src\main\java\com\hbm\weapon\ballistics\BallisticsService.java'
     if (-not (Test-Path -LiteralPath $bridgeSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $bridgeSource -SimpleMatch 'OBJ-to-Gecko bridge' -Quiet)) {
@@ -947,9 +967,110 @@ function Validate-PilotRuntimeAssets {
         (Select-String -LiteralPath $presentationSource -SimpleMatch 'sprintCurve' -Quiet)) {
         Add-ValidationError 'The gun presentation contains the rejected non-monotonic sprint curve that drops the viewmodel below the hotbar.'
     }
+    if (-not (Test-Path -LiteralPath $gunItemSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $gunItemSource -SimpleMatch 'shouldCauseReequipAnimation' -Quiet) -or
+        -not (Select-String -LiteralPath $gunItemSource -SimpleMatch 'return slotChanged || oldStack.getItem() != newStack.getItem();' -Quiet)) {
+        Add-ValidationError 'Gun component updates can regress to vanilla re-equip lowering after firing or ADS reconciliation.'
+    }
+    if (-not (Test-Path -LiteralPath $presentationSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch 'activeStackIdentity' -Quiet) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch 'previousWalkPhase' -Quiet) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch 'getGameTimeDeltaPartialTick(true)' -Quiet) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch 'interpolate(previousSwayX, swayX, partialTick)' -Quiet)) {
+        Add-ValidationError 'The gun presentation no longer guarantees stack-keyed state and frame-interpolated movement/sway.'
+    }
+    if (-not (Test-Path -LiteralPath $rigSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'pose(-0.484375, 0.2340625, 0.18, 0.0F, 0.0F, 0.0F, 1.0F)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'pose(-0.484375, 0.21875, -0.09375, 0.0F, 0.0F, 0.0F, 1.0F)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new ModelPose(new Vec3(0.40, -0.70, -2.20)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-1.0, 180.0, 0.0), 1.01F)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new ModelPose(new Vec3(-1.20, 0.55, -2.65)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(1.0, 180.0, 0.0), 0.99F)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-0.65, -1.55, 0.50)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(0.75, -1.60, 0.45)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-1.75, -0.50, 0.50)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-0.50, -0.55, 0.45)' -Quiet)) {
+        Add-ValidationError 'Target Pistol independent hip-fire or physical iron-sight ADS endpoint has regressed.'
+    }
+    if (-not (Test-Path -LiteralPath $bridgeSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $bridgeSource -SimpleMatch '"model_space"' -Quiet) -or
+        -not (Select-String -LiteralPath $bridgeSource -SimpleMatch 'rootName + "_mesh"' -Quiet) -or
+        -not (Select-String -LiteralPath $bridgeSource -SimpleMatch 'BoneRole.MUZZLE_FLASH' -Quiet)) {
+        Add-ValidationError 'Target Pistol model-axis normalization can regress to rotating player arms with the HBM OBJ.'
+    }
+    if (-not (Test-Path -LiteralPath $rigSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-81.0, -163.0, 167.0)' -Quiet) -or
+        -not (Select-String -LiteralPath $rigSource -SimpleMatch 'new Vec3(-88.0, 161.0, 176.0)' -Quiet)) {
+        Add-ValidationError 'Target Pistol player arms have regressed from the approved HBM grip pose.'
+    }
     if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'player.getSkin().texture()' -Quiet)) {
         Add-ValidationError 'The first-person weapon renderer is not bound to the local player skin.'
+    }
+    if (-not (Test-Path -LiteralPath $armRendererSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'bone.getPivotY() + 7.0F' -Quiet) -or
+        -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'part.yRot = (float) Math.PI' -Quiet) -or
+        -not (Select-String -LiteralPath $armRendererSource -SimpleMatch 'part.zRot = (float) Math.PI' -Quiet)) {
+        Add-ValidationError 'Target Pistol arms have regressed from Superb Warfare setupModelFromBone2 parity.'
+    }
+    if (-not (Test-Path -LiteralPath $calibrationSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'applyToModelSpace' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'hbm-target-pistol-calibration.json' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'GLFW.GLFW_KEY_F8' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'GLFW.GLFW_KEY_F10' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'applyToHandBone' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'ADS_POSE' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'adsPose(SuperbGunRig rig)' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'schema < 4' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'modelPoseForContext' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'TARGET_NON_FIRST_PERSON_POSE' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'adsPresentationBlend()' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'queueSave()' -Quiet)) {
+        Add-ValidationError 'The Target Pistol endpoint-separated model/arm calibration and autosave path is missing.'
+    }
+    if (-not (Test-Path -LiteralPath $rendererSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'applyToModelSpace(bone, rig, renderPerspective)' -Quiet)) {
+        Add-ValidationError 'Target Pistol first-person calibration can leak into GUI or third-person display contexts.'
+    }
+    if (-not (Test-Path -LiteralPath $targetItemModel -PathType Leaf) -or
+        -not (Select-String -LiteralPath $targetItemModel -SimpleMatch '"scale": [1.35, 1.35, 1.35]' -Quiet) -or
+        -not (Select-String -LiteralPath $targetItemModel -SimpleMatch '"scale": [0.7, 0.7, 0.7]' -Quiet) -or
+        -not (Select-String -LiteralPath $targetItemModel -SimpleMatch '"translation": [-1.25, -1, 0]' -Quiet)) {
+        Add-ValidationError 'Target Pistol GUI scale or third-person item scale has regressed.'
+    }
+    if (-not (Test-Path -LiteralPath $armPoseSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $armPoseSource -SimpleMatch 'HumanoidModel.ArmPose.BOW_AND_ARROW' -Quiet) -or
+        -not (Select-String -LiteralPath $armPoseSource -SimpleMatch 'HumanoidModel.ArmPose.CROSSBOW_CHARGE' -Quiet) -or
+        -not (Test-Path -LiteralPath $clientSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $clientSource -SimpleMatch 'HbmGunArmPose.select' -Quiet)) {
+        Add-ValidationError 'The Superb Warfare-style third-person gun arm pose is missing.'
+    }
+    if (-not (Test-Path -LiteralPath $presentationSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch '0.10F, 0.14F' -Quiet) -or
+        (Select-String -LiteralPath $presentationSource -SimpleMatch '115.0F * drawAmount' -Quiet)) {
+        Add-ValidationError 'Weapon movement cadence or clean equip transition has regressed.'
+    }
+    if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'boolean valid = isHoldingGun(minecraft);' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'boolean inputAllowed = valid && minecraft.screen == null;' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (!valid) {' -Quiet)) {
+        Add-ValidationError 'Opening chat or inventory can invalidate and rotate the held weapon presentation again.'
+    }
+    if (-not (Test-Path -LiteralPath $weaponServiceSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $weaponServiceSource -SimpleMatch 'if (session.adsHeld() && player.isSprinting())' -Quiet) -or
+        -not (Select-String -LiteralPath $weaponServiceSource -SimpleMatch 'player.setSprinting(false);' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (ads && wasSprinting)' -Quiet)) {
+        Add-ValidationError 'ADS no longer authoritatively overrides sprint on both client and server.'
+    }
+    if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'boolean movingForward = minecraft.player != null' -Quiet) -or
+        (Select-String -LiteralPath $controllerSource -SimpleMatch 'minecraft.player.input.hasForwardImpulse(),' -Quiet)) {
+        Add-ValidationError 'Weapon movement intent can dereference the client player before a world is loaded.'
+    }
+    if (-not (Test-Path -LiteralPath $calibrationMarkerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $calibrationMarkerSource -SimpleMatch 'HBM_RIGHT_GRIP' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationMarkerSource -SimpleMatch 'renderFixedHandAnchor' -Quiet)) {
+        Add-ValidationError 'The Target Pistol fixed-hand and HBM-grip calibration markers are missing.'
     }
     if (-not (Test-Path -LiteralPath $flareRendererSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $flareRendererSource -SimpleMatch $superbCommit -Quiet) -or
@@ -959,12 +1080,18 @@ function Validate-PilotRuntimeAssets {
     }
     if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case MUZZLE_FLASH -> {' -Quiet) -or
-        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (!localFirstPerson)' -Quiet)) {
-        Add-ValidationError 'Local first-person muzzle flashes can regress to unsafe world-space particles.'
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'if (localFirstPerson && HbmClientConfig.CASING_PARTICLES.get())' -Quiet) -or
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'if (renderPerspective.firstPerson())' -Quiet)) {
+        Add-ValidationError 'Muzzle flashes or casing effects can leak back into third-person rendering.'
     }
     if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'targetPistol ? "idle"' -Quiet)) {
         Add-ValidationError 'Target Pistol ADS and sprint pose clips can regress to double-transforming the procedural presentation root.'
+    }
+    if (-not (Test-Path -LiteralPath $controllerSource -PathType Leaf) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'authoritativeMatchesHeldStack' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'SuperbGunPresentationState.tick(minecraft, valid,' -Quiet)) {
+        Add-ValidationError 'Target Pistol presentation can regress to stale packet state surviving weapon/action transitions.'
     }
     if (-not (Test-Path -LiteralPath $ballisticsSource -PathType Leaf) -or
         -not (Select-String -LiteralPath $ballisticsSource -SimpleMatch 'if (round.tracerColor == 0)' -Quiet)) {
@@ -975,8 +1102,29 @@ function Validate-PilotRuntimeAssets {
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'VanillaGuiLayers.CROSSHAIR' -Quiet) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'SuperbGunPresentationState.crosshairSpread()' -Quiet) -or
         -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'renderAmmoPanel' -Quiet) -or
-        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'drawHitMarker' -Quiet)) {
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'drawHitFeedback' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case HIT -> HIT_FEEDBACK.start' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case HEADSHOT_KILL -> HIT_FEEDBACK.start' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case HIT, HEADSHOT -> 0xFFFFFF' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'case KILL, HEADSHOT_KILL -> 0xFF2525' -Quiet) -or
+        -not (Select-String -LiteralPath $ballisticsSource -SimpleMatch 'sendConfirmation' -Quiet) -or
+        -not (Select-String -LiteralPath $ballisticsSource -SimpleMatch 'if (!damageApplied)' -Quiet) -or
+        -not (Select-String -LiteralPath $ballisticsSource -SimpleMatch 'WeaponEffectType.HEADSHOT_KILL' -Quiet)) {
         Add-ValidationError 'The GPL-attributed Superb-style crosshair, hit feedback, or ammunition HUD is missing.'
+    }
+    if (-not (Select-String -LiteralPath $controllerSource -SimpleMatch 'int centerX = graphics.guiWidth() / 2;' -Quiet) -or
+        -not (Select-String -LiteralPath $controllerSource -SimpleMatch 'minecraft.options.bobView().set(false)' -Quiet) -or
+        -not (Select-String -LiteralPath $presentationSource -SimpleMatch 'float swayScale = 1.0F - ads;' -Quiet)) {
+        Add-ValidationError 'Hip-fire reticle zero or complete ADS movement-bob suppression has regressed.'
+    }
+    if (-not (Select-String -LiteralPath $controllerSource -SimpleMatch 'suppressOffhandGun(RenderHandEvent event)' -Quiet) -or
+        -not (Select-String -LiteralPath $rendererSource -SimpleMatch 'ItemDisplayContext.THIRD_PERSON_LEFT_HAND' -Quiet) -or
+        -not (Select-String -LiteralPath $clientSource -SimpleMatch 'InteractionHand.OFF_HAND' -Quiet)) {
+        Add-ValidationError 'Off-hand guns can render or re-enter the supported weapon pose path.'
+    }
+    if ((Select-String -LiteralPath $calibrationSource -SimpleMatch 'animatedRotX' -Quiet) -or
+        -not (Select-String -LiteralPath $calibrationSource -SimpleMatch 'This must be absolute.' -Quiet)) {
+        Add-ValidationError 'Target Pistol hand rotations can accumulate between frames and spin during ADS.'
     }
 }
 

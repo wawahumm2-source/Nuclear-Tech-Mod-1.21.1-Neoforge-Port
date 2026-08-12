@@ -6,9 +6,9 @@
   "armor_penetration": 0.12,
   "pellet_count": 1,
   "spread_multiplier": 1.0,
-  "gravity": 0.012,
-  "drag": 0.006,
+  "gravity": 0.0245,
+  "drag": 0.001,
   "explosion": null,
   "impact_effect": "hbm:bullet",
-  "tracer_color": "000000"
+  "tracer_color": "FFD27A"
 }

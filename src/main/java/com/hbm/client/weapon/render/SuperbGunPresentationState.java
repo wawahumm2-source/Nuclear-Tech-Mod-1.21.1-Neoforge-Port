@@ -6,6 +6,9 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 
+import java.util.Objects;
+import java.util.UUID;
+
 /**
  * Continuous first-person gun motion adapted from Superb Warfare's ClientEventHandler and
  * Mp443ItemModel at commit 9b5284f42ef79532e6fb7f03ab07425c693b0b43 (GPL-3.0).
@@ -23,9 +26,13 @@ public final class SuperbGunPresentationState {
     private static float fireTime;
     private static float previousFlash;
     private static float flash;
+    private static float previousWalkPhase;
     private static float walkPhase;
+    private static float previousSwayTime;
     private static float swayTime;
+    private static float previousSwayX;
     private static float swayX;
+    private static float previousSwayY;
     private static float swayY;
     private static float previousStrafe;
     private static float strafe;
@@ -34,26 +41,36 @@ public final class SuperbGunPresentationState {
     private static float previousReloadTime;
     private static float reloadTime;
     private static float reloadDuration;
+    private static float previousLower;
+    private static float lower;
     private static boolean emptyReload;
     private static float lastPitch;
     private static float lastYaw;
     private static boolean wasValid;
     private static float recoilSide = 1.0F;
+    private static UUID activeStackIdentity;
 
-    public static void tick(Minecraft minecraft, boolean valid) {
+    public static void tick(Minecraft minecraft, boolean valid, UUID stackIdentity,
+                            boolean lowerRequested) {
         previousMove = move;
         previousSprint = sprint;
         previousDraw = draw;
         previousFireTime = fireTime;
         previousFlash = flash;
+        previousWalkPhase = walkPhase;
+        previousSwayTime = swayTime;
+        previousSwayX = swayX;
+        previousSwayY = swayY;
         previousStrafe = strafe;
         previousVerticalVelocity = verticalVelocity;
         previousReloadTime = reloadTime;
+        previousLower = lower;
 
         if (!valid || minecraft.player == null) {
             move = Mth.approach(move, 0.0F, 0.20F);
             sprint = Mth.approach(sprint, 0.0F, 0.22F);
             draw = Mth.approach(draw, 1.0F, 0.18F);
+            lower = Mth.approach(lower, 0.0F, 0.25F);
             fireTime = 0.0F;
             flash = 0.0F;
             swayX *= 0.7F;
@@ -63,14 +80,12 @@ public final class SuperbGunPresentationState {
             reloadTime = 0.0F;
             reloadDuration = 0.0F;
             wasValid = false;
+            activeStackIdentity = null;
             return;
         }
 
-        if (!wasValid) {
-            draw = 1.0F;
-            previousDraw = 1.0F;
-            lastPitch = minecraft.player.getXRot();
-            lastYaw = minecraft.player.getYRot();
+        if (!wasValid || !Objects.equals(activeStackIdentity, stackIdentity)) {
+            beginWeapon(minecraft, stackIdentity);
         }
         wasValid = true;
 
@@ -79,9 +94,12 @@ public final class SuperbGunPresentationState {
                 ? Mth.clamp((float) (horizontalSpeed / 0.12D), 0.0F, 1.0F)
                 : 0.04F;
         move = Mth.lerp(0.28F, move, movementTarget);
-        sprint = Mth.approach(sprint, minecraft.player.isSprinting() ? 1.0F : 0.0F, 0.16F);
-        draw = Mth.approach(draw, 0.0F, 0.13F);
-        float phaseSpeed = Mth.lerp(sprint, 0.31F, 0.48F);
+        boolean sprintingNow = minecraft.player.isSprinting();
+        sprint = Mth.approach(sprint, sprintingNow ? 1.0F : 0.0F,
+                sprintBlendStep(sprintingNow));
+        draw = Mth.approach(draw, 0.0F, 0.18F);
+        lower = Mth.approach(lower, lowerRequested ? 1.0F : 0.0F, 0.20F);
+        float phaseSpeed = movementPhaseSpeed(sprint);
         walkPhase += phaseSpeed * Math.max(0.08F, move);
         swayTime += 0.10F;
 
@@ -125,6 +143,26 @@ public final class SuperbGunPresentationState {
         previousDraw = 1.0F;
     }
 
+    private static void beginWeapon(Minecraft minecraft, UUID stackIdentity) {
+        activeStackIdentity = stackIdentity;
+        move = previousMove = 0.0F;
+        sprint = previousSprint = 0.0F;
+        draw = previousDraw = 1.0F;
+        fireTime = previousFireTime = 0.0F;
+        flash = previousFlash = 0.0F;
+        walkPhase = previousWalkPhase = 0.0F;
+        swayTime = previousSwayTime = 0.0F;
+        swayX = previousSwayX = 0.0F;
+        swayY = previousSwayY = 0.0F;
+        strafe = previousStrafe = 0.0F;
+        verticalVelocity = previousVerticalVelocity = 0.0F;
+        reloadTime = previousReloadTime = 0.0F;
+        reloadDuration = 0.0F;
+        lower = previousLower = 0.0F;
+        lastPitch = minecraft.player.getXRot();
+        lastYaw = minecraft.player.getYRot();
+    }
+
     public static void fire() {
         fireTime = 0.001F;
         previousFireTime = 0.001F;
@@ -142,31 +180,55 @@ public final class SuperbGunPresentationState {
 
     public static void reset() {
         wasValid = false;
+        activeStackIdentity = null;
+        move = previousMove = 0.0F;
+        sprint = previousSprint = 0.0F;
+        draw = previousDraw = 1.0F;
         fireTime = 0.0F;
+        previousFireTime = 0.0F;
         flash = 0.0F;
+        previousFlash = 0.0F;
+        walkPhase = previousWalkPhase = 0.0F;
+        swayTime = previousSwayTime = 0.0F;
+        swayX = previousSwayX = 0.0F;
+        swayY = previousSwayY = 0.0F;
+        strafe = previousStrafe = 0.0F;
+        verticalVelocity = previousVerticalVelocity = 0.0F;
         reloadTime = 0.0F;
+        previousReloadTime = 0.0F;
         reloadDuration = 0.0F;
+        lower = previousLower = 0.0F;
     }
 
-    public static void applyFirstPerson(PoseStack poseStack, SuperbGunRig rig, boolean leftHand) {
-        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
-        SuperbGunRig.FirstPersonPose base = rig.hip().lerp(rig.ads(), ads);
-        float moveAmount = midpoint(previousMove, move) * (1.0F - ads * 0.72F);
-        float sprintAmount = midpoint(previousSprint, sprint) * (1.0F - ads);
-        float drawAmount = midpoint(previousDraw, draw);
-        float shotTime = midpoint(previousFireTime, fireTime);
+    public static void applyFirstPerson(PoseStack poseStack, SuperbGunRig rig, boolean leftHand,
+                                        float partialTick) {
+        float ads = adsPresentationBlend(partialTick);
+        SuperbGunRig.FirstPersonPose base = rig.hip().lerp(
+                TargetPistolCalibrationState.adsPose(rig), ads);
+        // Full ADS owns the presentation. Residual walking bob after sprint cancellation made
+        // the sight picture drift for several ticks while movement smoothing settled.
+        float locomotionScale = 1.0F - ads;
+        float moveAmount = interpolate(previousMove, move, partialTick) * locomotionScale;
+        float sprintAmount = interpolate(previousSprint, sprint, partialTick) * locomotionScale;
+        float drawAmount = interpolate(previousDraw, draw, partialTick);
+        float shotTime = interpolate(previousFireTime, fireTime, partialTick);
+        float lowerAmount = interpolate(previousLower, lower, partialTick) * (1.0F - ads);
         float actionDamping = reloadActive() ? 0.22F : 1.0F;
-        float phase = walkPhase;
+        float phase = interpolate(previousWalkPhase, walkPhase, partialTick);
+        float renderedSwayTime = interpolate(previousSwayTime, swayTime, partialTick);
+        float renderedSwayX = interpolate(previousSwayX, swayX, partialTick);
+        float renderedSwayY = interpolate(previousSwayY, swayY, partialTick);
 
         double x = leftHand ? -base.x() : base.x();
         double bobX = 0.2D * Math.sin(Math.PI * phase) * moveAmount / 16.0D;
         double bobY = -0.135D * Math.sin(2.0D * Math.PI * (phase - 0.25D))
                 * moveAmount / 16.0D;
-        double breathingY = 0.125D * Math.sin(swayTime - 1.585D)
-                * (1.0D - 0.95D * ads) / 16.0D;
-        double strafeX = 0.58D * midpoint(previousStrafe, strafe) * (1.0D - ads) / 16.0D;
-        double verticalY = -2.0D * midpoint(previousVerticalVelocity, verticalVelocity)
-                * (1.0D - 0.5D * ads) / 16.0D;
+        double breathingY = 0.125D * Math.sin(renderedSwayTime - 1.585D)
+                * locomotionScale / 16.0D;
+        double strafeX = 0.58D * interpolate(previousStrafe, strafe, partialTick)
+                * locomotionScale / 16.0D;
+        double verticalY = -2.0D * interpolate(previousVerticalVelocity, verticalVelocity, partialTick)
+                * locomotionScale / 16.0D;
 
         // Keep the sprint transition monotonic. The former midpoint parabola displaced the
         // weapon by roughly half a block at 50% blend, dropping it below the hotbar.
@@ -177,8 +239,8 @@ public final class SuperbGunPresentationState {
         double sprintZ = 0.90D * sprintAmount / 16.0D;
 
         poseStack.translate(x + (leftHand ? -bobX : bobX) + strafeX + sprintX,
-                base.y() + bobY + breathingY + verticalY + sprintY,
-                base.z() + sprintZ);
+                base.y() + bobY + breathingY + verticalY + sprintY - 0.13D * lowerAmount,
+                base.z() + sprintZ + 0.05D * lowerAmount);
 
         float yaw = leftHand ? -base.yRotation() : base.yRotation();
         float roll = leftHand ? -base.zRotation() : base.zRotation();
@@ -186,19 +248,44 @@ public final class SuperbGunPresentationState {
         poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
         poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
 
-        poseStack.translate((leftHand ? -1.0D : 1.0D) * 0.28D * drawAmount,
-                -0.42D * drawAmount, 0.10D * drawAmount);
-        poseStack.mulPose(Axis.XP.rotationDegrees(22.0F * sprintAmount - 48.0F * drawAmount));
-        poseStack.mulPose(Axis.YP.rotationDegrees((leftHand ? -1.0F : 1.0F)
-                * (22.0F * sprintAmount + 115.0F * drawAmount)));
-        poseStack.mulPose(Axis.ZP.rotationDegrees((leftHand ? -1.0F : 1.0F)
-                * (18.0F * sprintAmount + 45.0F * drawAmount)));
+        // The mechanism animation moves the magazine, slide, and individual hands. This smooth
+        // outer envelope makes the reload unmistakable even with a compact legacy pistol mesh.
+        float reloadProgress = reloadProgress(partialTick);
+        if (reloadProgress > 0.0F) {
+            float raise = reloadProgress < 0.18F
+                    ? smoothSegment(reloadProgress, 0.0F, 0.18F, 0.0F, 1.0F)
+                    : reloadProgress > 0.78F
+                    ? smoothSegment(reloadProgress, 0.78F, 1.0F, 1.0F, 0.0F)
+                    : 1.0F;
+            float handSide = leftHand ? -1.0F : 1.0F;
+            float mechanismBeat = (float) Math.sin(Math.PI * reloadProgress);
+            poseStack.translate(handSide * 0.10D * raise,
+                    -0.085D * raise - 0.018D * mechanismBeat,
+                    0.035D * raise);
+            poseStack.mulPose(Axis.XP.rotationDegrees(8.0F * raise));
+            poseStack.mulPose(Axis.YP.rotationDegrees(-handSide * 18.0F * raise));
+            poseStack.mulPose(Axis.ZP.rotationDegrees(-handSide * 15.0F * raise));
+        }
 
-        float swayScale = 1.0F - ads * 0.78F;
-        float idleSway = (float) (-0.008D * Math.sin(swayTime) * (1.0D - 0.95D * ads));
+        // Equip from a short lowered pose. The former 115-degree yaw exposed the side-on item
+        // transform and swept the gun across the screen whenever a GUI reset presentation.
+        poseStack.translate((leftHand ? -1.0D : 1.0D) * 0.08D * drawAmount,
+                -0.18D * drawAmount, 0.04D * drawAmount);
+        poseStack.mulPose(Axis.XP.rotationDegrees(22.0F * sprintAmount - 10.0F * drawAmount));
+        poseStack.mulPose(Axis.YP.rotationDegrees((leftHand ? -1.0F : 1.0F)
+                * 22.0F * sprintAmount));
+        poseStack.mulPose(Axis.ZP.rotationDegrees((leftHand ? -1.0F : 1.0F)
+                * (18.0F * sprintAmount + 4.0F * drawAmount)));
+        poseStack.mulPose(Axis.XP.rotationDegrees(20.0F * lowerAmount));
+        poseStack.mulPose(Axis.ZP.rotationDegrees((leftHand ? 1.0F : -1.0F)
+                * 8.0F * lowerAmount));
+
+        float swayScale = 1.0F - ads;
+        float idleSway = (float) (-0.008D * Math.sin(renderedSwayTime)
+                * (1.0D - ads));
         poseStack.mulPose(Axis.XP.rotation(idleSway * actionDamping));
-        poseStack.mulPose(Axis.XP.rotationDegrees(swayX * swayScale * actionDamping));
-        poseStack.mulPose(Axis.YP.rotationDegrees(swayY * swayScale * actionDamping));
+        poseStack.mulPose(Axis.XP.rotationDegrees(renderedSwayX * swayScale * actionDamping));
+        poseStack.mulPose(Axis.YP.rotationDegrees(renderedSwayY * swayScale * actionDamping));
         poseStack.mulPose(Axis.ZP.rotationDegrees((float) Math.sin(Math.PI * phase)
                 * 1.15F * moveAmount * actionDamping));
 
@@ -216,7 +303,7 @@ public final class SuperbGunPresentationState {
     }
 
     public static float reloadCameraPitch() {
-        float t = reloadProgress();
+        float t = reloadProgress(renderPartialTick());
         if (t <= 0.0F) return 0.0F;
         if (t < 0.20F) return smoothSegment(t, 0.0F, 0.20F, 0.0F, 1.25F);
         if (t < 0.48F) return smoothSegment(t, 0.20F, 0.48F, 1.25F, 0.55F);
@@ -227,13 +314,13 @@ public final class SuperbGunPresentationState {
     }
 
     public static float reloadCameraYaw() {
-        float t = reloadProgress();
+        float t = reloadProgress(renderPartialTick());
         if (t <= 0.0F) return 0.0F;
         return (float) Math.sin(Math.PI * t) * 0.30F;
     }
 
     public static float reloadCameraRoll() {
-        float t = reloadProgress();
+        float t = reloadProgress(renderPartialTick());
         if (t <= 0.0F) return 0.0F;
         return (float) -Math.sin(2.0D * Math.PI * t) * 0.34F;
     }
@@ -242,13 +329,14 @@ public final class SuperbGunPresentationState {
         return reloadTime > 0.0F && reloadDuration > 0.0F;
     }
 
-    private static float reloadProgress() {
+    private static float reloadProgress(float partialTick) {
         if (!reloadActive()) return 0.0F;
-        return Mth.clamp(midpoint(previousReloadTime, reloadTime) / reloadDuration, 0.0F, 1.0F);
+        return Mth.clamp(interpolate(previousReloadTime, reloadTime, partialTick) / reloadDuration,
+                0.0F, 1.0F);
     }
 
     public static float slideTravel() {
-        float time = midpoint(previousFireTime, fireTime);
+        float time = interpolate(previousFireTime, fireTime, renderPartialTick());
         if (time <= 0.0F || time > 0.5F) {
             return 0.0F;
         }
@@ -256,7 +344,7 @@ public final class SuperbGunPresentationState {
     }
 
     public static float flashStrength() {
-        return midpoint(previousFlash, flash);
+        return interpolate(previousFlash, flash, renderPartialTick());
     }
 
     public static float flashRotation() {
@@ -264,28 +352,77 @@ public final class SuperbGunPresentationState {
     }
 
     public static float crosshairSpread() {
-        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
-        float movement = midpoint(previousMove, move);
-        float sprinting = midpoint(previousSprint, sprint);
-        float firing = midpoint(previousFireTime, fireTime) > 0.0F ? 1.0F : 0.0F;
+        float partialTick = renderPartialTick();
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend(partialTick));
+        float movement = interpolate(previousMove, move, partialTick);
+        float sprinting = interpolate(previousSprint, sprint, partialTick);
+        float firing = fireBloomAtTime(interpolate(previousFireTime, fireTime, partialTick));
         return Mth.clamp(1.0F + movement * 1.5F + sprinting * 4.0F + firing * 2.2F
                 - ads * 0.82F, 0.35F, 8.0F);
     }
 
+    /**
+     * Drive reticle bloom from the same primary pitch curve as the visible weapon recoil.
+     * A binary "shot active" flag kept the reticle expanded through the tiny settling tail,
+     * making bloom feel substantially slower than the pistol itself.
+     */
+    static float fireBloomAtTime(float time) {
+        if (time <= 0.0F || time >= 3.0F) {
+            return 0.0F;
+        }
+        return Mth.clamp(Math.abs(boneRotX(time)) / 6.38564F, 0.0F, 1.0F);
+    }
+
+    /**
+     * Shared render-frame ADS blend for the outer rig, weapon mesh, and both player arms.
+     * A single eased value prevents the independently approved endpoints from drifting apart
+     * during the transition.
+     */
+    public static float adsPresentationBlend(float partialTick) {
+        return easeInOutQuint(ClientWeaponController.viewmodelAdsBlend(partialTick));
+    }
+
+    public static float adsPresentationBlend() {
+        return adsPresentationBlend(renderPartialTick());
+    }
+
     public static float crosshairOffsetX() {
-        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
-        return swayY * (1.0F - ads * 0.82F) * 0.55F
-                + (float) Math.sin(walkPhase) * midpoint(previousMove, move) * 1.35F;
+        float partialTick = renderPartialTick();
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend(partialTick));
+        return interpolate(previousSwayY, swayY, partialTick)
+                * (1.0F - ads * 0.82F) * 0.55F
+                + (float) Math.sin(interpolate(previousWalkPhase, walkPhase, partialTick))
+                * interpolate(previousMove, move, partialTick) * 1.35F;
     }
 
     public static float crosshairOffsetY() {
-        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend());
-        return swayX * (1.0F - ads * 0.82F) * 0.45F
-                + (float) Math.abs(Math.cos(walkPhase)) * midpoint(previousMove, move) * 0.75F;
+        float partialTick = renderPartialTick();
+        float ads = easeInOutQuint(ClientWeaponController.viewmodelAdsBlend(partialTick));
+        return interpolate(previousSwayX, swayX, partialTick)
+                * (1.0F - ads * 0.82F) * 0.45F
+                + (float) Math.abs(Math.cos(interpolate(previousWalkPhase, walkPhase, partialTick)))
+                * interpolate(previousMove, move, partialTick) * 0.75F;
     }
 
-    private static float midpoint(float previous, float current) {
-        return (previous + current) * 0.5F;
+    private static float interpolate(float previous, float current, float partialTick) {
+        return Mth.lerp(Mth.clamp(partialTick, 0.0F, 1.0F), previous, current);
+    }
+
+    static float movementPhaseSpeed(float sprintBlend) {
+        // One complete render bob cycle spans two phase units because the primary curve uses
+        // sin(PI * phase). These rates keep walking near one cycle/second and sprinting near
+        // 1.4 cycles/second instead of the former four-to-five cycles/second.
+        return Mth.lerp(Mth.clamp(sprintBlend, 0.0F, 1.0F), 0.10F, 0.14F);
+    }
+
+    static float sprintBlendStep(boolean sprinting) {
+        // Preserve the weighted raise into sprint, but let release return to the approved
+        // hip-fire endpoint in about three ticks instead of lingering for six or seven.
+        return sprinting ? 0.16F : 0.34F;
+    }
+
+    private static float renderPartialTick() {
+        return Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
     }
 
     private static float smoothSegment(float value, float fromTime, float toTime,

@@ -2,6 +2,7 @@ package com.hbm.client.weapon;
 
 import com.hbm.HbmNuclearTech;
 import com.hbm.client.weapon.render.SuperbGunPresentationState;
+import com.hbm.client.weapon.render.HbmBulletTracerRenderer;
 import com.hbm.config.HbmClientConfig;
 import com.hbm.item.HbmGunItem;
 import com.hbm.network.WeaponCommand;
@@ -16,9 +17,15 @@ import com.hbm.registry.HbmItems;
 import com.hbm.weapon.state.ReloadPhase;
 import com.hbm.weapon.state.GunState;
 import com.hbm.weapon.state.RecoilAccumulator;
+import com.hbm.weapon.state.WeaponSession;
+import com.hbm.weapon.ballistics.WeaponAim;
+import com.hbm.weapon.data.GunDefinition;
+import com.hbm.weapon.data.GunDefinitionRegistry;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.particle.Particle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.ItemParticleOption;
@@ -26,6 +33,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -40,6 +48,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -47,6 +56,8 @@ import org.lwjgl.glfw.GLFW;
 import software.bernie.geckolib.animatable.GeoItem;
 
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -66,6 +77,8 @@ public final class ClientWeaponController {
     private static final KeyMapping FIRE_MODE = key("key.hbm.fire_mode", GLFW.GLFW_KEY_B);
     private static final KeyMapping AMMO = key("key.hbm.ammo", GLFW.GLFW_KEY_N);
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
+    private static final SprintFireTransition SPRINT_FIRE = new SprintFireTransition();
+    private static final AdsSprintMomentum ADS_SPRINT_MOMENTUM = new AdsSprintMomentum();
 
     private static boolean lastFire;
     private static boolean lastAds;
@@ -77,12 +90,13 @@ public final class ClientWeaponController {
     private static int predictedAnimationTicks;
     private static float screenShake;
     private static Double sensitivityBeforeAds;
+    private static Boolean viewBobbingBeforeAds;
     private static UUID lastAuthoritativeStack;
     private static String lastPresentationPose;
     private static float previousAdsBlend;
     private static float adsBlend;
-    private static int hitMarkerTicks;
-    private static int headshotMarkerTicks;
+    private static final HitFeedbackAnimation HIT_FEEDBACK = new HitFeedbackAnimation();
+    private static final Map<Integer, Long> THIRD_PERSON_RELOAD_UNTIL = new HashMap<>();
 
     @SubscribeEvent
     public static void registerKeys(RegisterKeyMappingsEvent event) {
@@ -101,39 +115,120 @@ public final class ClientWeaponController {
     }
 
     @SubscribeEvent
+    public static void suppressOffhandGun(RenderHandEvent event) {
+        if (event.getHand() == InteractionHand.OFF_HAND
+                && event.getItemStack().getItem() instanceof HbmGunItem) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
     public static void clientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        boolean valid = isHoldingGun(minecraft) && minecraft.screen == null;
-        boolean fire = valid && minecraft.options.keyAttack.isDown();
-        boolean ads = valid && minecraft.options.keyUse.isDown() && !minecraft.player.isSprinting();
+        // Opening chat/inventory blocks weapon input, but it must not invalidate the held
+        // viewmodel. Invalidating here reset draw/stack state and exposed the fallback pose.
+        boolean valid = isHoldingGun(minecraft);
+        boolean inputAllowed = valid && minecraft.screen == null;
+        GunState heldState = valid
+                ? minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get())
+                : null;
+        boolean authoritativeHeld = authoritativeMatchesHeldStack(heldState);
+        boolean actionPlaying = authoritativeHeld
+                && authoritativeState.reloadPhase() != ReloadPhase.IDLE;
+        boolean movingForward = minecraft.player != null
+                && minecraft.player.input.hasForwardImpulse();
+        boolean wasSprinting = valid && minecraft.player.isSprinting();
+        boolean fire = inputAllowed && minecraft.options.keyAttack.isDown();
+        boolean ads = inputAllowed && !actionPlaying && minecraft.options.keyUse.isDown();
+        boolean adsPressed = !lastAds && ads;
+        if (adsPressed && wasSprinting && minecraft.player.onGround()) {
+            ADS_SPRINT_MOMENTUM.capture(
+                    minecraft.player.getDeltaMovement().horizontalDistance());
+        }
+        if (ads && wasSprinting) {
+            // ADS wins over sprint, matching Superb Warfare's input priority.
+            minecraft.player.setSprinting(false);
+        }
 
         previousAdsBlend = adsBlend;
-        float adsTarget = valid && (ads || authoritativeState != null && authoritativeState.ads()) ? 1.0F : 0.0F;
+        boolean adsActive = valid && !actionPlaying
+                && (ads || authoritativeHeld && authoritativeState.ads());
+        float adsTarget = adsActive ? 1.0F : 0.0F;
         adsBlend = Mth.approach(adsBlend, adsTarget, 0.18F);
 
         if (fire != lastFire) {
-            sendInput(WeaponInput.FIRE, fire);
+            // Ctrl may briefly reassert vanilla sprint while ADS is held. ADS fire must remain
+            // immediate; only a genuine hip/sprint press enters the settle-fire-recovery path.
+            boolean sprintTransition = fire
+                    && WeaponSprintPolicy.shouldUseSprintFireTransition(wasSprinting, adsActive);
+            sendInput(WeaponInput.FIRE, fire, sprintTransition);
             if (fire) {
-                GunState localState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
-                boolean predictedLiveRound = localState == null || localState.ammoCount() > 0;
-                if (predictedLiveRound) {
-                    applyPredictedRecoil(minecraft);
-                    SuperbGunPresentationState.fire();
-                    triggerAnimation(minecraft.player, "fire");
+                if (sprintTransition) {
+                    // Drop to hipfire now; recoil occurs only after the server-owned settle
+                    // window rather than while the weapon is still in its sprint pose.
+                    minecraft.player.setSprinting(false);
+                    SPRINT_FIRE.begin(
+                            WeaponSession.SPRINT_FIRE_SETTLE_TICKS,
+                            WeaponSession.SPRINT_FIRE_RECOVERY_TICKS);
                 } else {
-                    triggerAnimation(minecraft.player, "dry_fire");
+                    predictShot(minecraft, heldState);
                 }
-                predictedAnimationTicks = 6;
             }
             lastFire = fire;
         }
+        boolean adsReleased = lastAds && !ads;
         if (ads != lastAds) {
-            sendInput(WeaponInput.ADS, ads);
+            sendInput(WeaponInput.ADS, ads, false);
             lastAds = ads;
         }
 
-        if (valid) {
+        if (!valid) {
+            SPRINT_FIRE.cancel();
+        }
+        SprintFireTransition.Result sprintFire = valid
+                ? SPRINT_FIRE.tick(
+                        minecraft.options.keySprint.isDown(),
+                        movingForward,
+                        adsActive)
+                : SprintFireTransition.IDLE;
+        if (sprintFire.holdHipfire()) {
+            minecraft.player.setSprinting(false);
+        }
+        if (sprintFire.predictShot()) {
+            predictShot(minecraft, heldState);
+        }
+        if (sprintFire.resumeSprint()) {
+            minecraft.player.setSprinting(true);
+        }
+        if (WeaponSprintPolicy.shouldRestartAfterAds(
+                adsReleased,
+                inputAllowed,
+                minecraft.options.keySprint.isDown(),
+                movingForward,
+                actionPlaying,
+                SPRINT_FIRE.active())) {
+            ADS_SPRINT_MOMENTUM.beginRestore();
+        }
+        AdsSprintMomentum.Result adsSprintRestart = ADS_SPRINT_MOMENTUM.tick(
+                valid
+                        && inputAllowed
+                        && !ads
+                        && minecraft.options.keySprint.isDown()
+                        && movingForward
+                        && !actionPlaying
+                        && !SPRINT_FIRE.active(),
+                valid ? minecraft.player.getDeltaMovement().horizontalDistance() : 0.0D);
+        if (adsSprintRestart.restartSprint()) {
+            // Reassert sprint while the server removes the ADS movement modifier, and restore
+            // only the pace captured on ADS entry. Repeated RMB taps therefore cannot stack
+            // velocity or manufacture momentum from a standing start.
+            minecraft.player.setSprinting(true);
+            restoreHorizontalMomentum(minecraft, adsSprintRestart.targetHorizontalSpeed());
+        }
+
+        if (inputAllowed) {
             while (RELOAD.consumeClick()) {
+                SPRINT_FIRE.cancel();
                 sendCommand(WeaponCommand.RELOAD);
             }
             while (FIRE_MODE.consumeClick()) {
@@ -142,22 +237,22 @@ public final class ClientWeaponController {
             while (AMMO.consumeClick()) {
                 sendCommand(WeaponCommand.CYCLE_AMMO);
             }
-        } else {
+        }
+        if (!valid) {
             authoritativeState = null;
             lastAuthoritativeStack = null;
             predictedRecoilPending = false;
+            SPRINT_FIRE.cancel();
+            ADS_SPRINT_MOMENTUM.cancel();
             SuperbGunPresentationState.reset();
         }
-        boolean actionPlaying = authoritativeState != null
-                && authoritativeState.reloadPhase() != ReloadPhase.IDLE;
+        boolean targetPistol = valid && isHoldingTargetPistol(minecraft);
+        boolean lowerRequested = targetPistol && !ads && shouldLowerAtWall(minecraft);
         if (valid && !actionPlaying) {
-            boolean targetPistol = isHoldingTargetPistol(minecraft);
-            // Procedural presentation already owns Target Pistol ADS and sprinting. Replaying
-            // Gecko pose clips on the same root doubled those transforms and caused the
-            // intermittent below-hotbar and sideways-hand transitions seen in the audit video.
-            String presentationPose = !ads && shouldLowerAtWall(minecraft)
-                    ? "lower"
-                    : targetPistol ? "idle"
+            // Target Pistol equip, ADS, sprint, wall lowering, and recoil all belong to one
+            // continuous presentation state. Gecko owns only mechanism and reload clips.
+            String presentationPose = targetPistol ? "idle"
+                    : !ads && shouldLowerAtWall(minecraft) ? "lower"
                     : minecraft.player.isSprinting() ? "sprint" : ads ? "ads" : "idle";
             if (!presentationPose.equals(lastPresentationPose)) {
                 triggerAnimation(minecraft.player, presentationPose);
@@ -168,20 +263,28 @@ public final class ClientWeaponController {
         }
         predictedAnimationTicks = Math.max(0, predictedAnimationTicks - 1);
         recoverRecoil(minecraft);
-        updateAdsSensitivity(minecraft, valid && (lastAds || authoritativeState != null && authoritativeState.ads()));
-        SuperbGunPresentationState.tick(minecraft, valid);
+        updateAdsSensitivity(minecraft, adsActive);
+        updateViewBobbing(minecraft, adsActive);
+        SuperbGunPresentationState.tick(minecraft, valid,
+                heldState == null ? null : heldState.stackIdentity(), lowerRequested);
         screenShake *= 0.78F;
-        hitMarkerTicks = Math.max(0, hitMarkerTicks - 1);
-        headshotMarkerTicks = Math.max(0, headshotMarkerTicks - 1);
+        HIT_FEEDBACK.tick();
+        if (minecraft.level != null) {
+            long now = minecraft.level.getGameTime();
+            THIRD_PERSON_RELOAD_UNTIL.entrySet().removeIf(entry -> entry.getValue() < now);
+        } else {
+            THIRD_PERSON_RELOAD_UNTIL.clear();
+        }
     }
 
     @SubscribeEvent
     public static void modifyFov(ComputeFovModifierEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (isHoldingGun(minecraft) && adsBlend > 0.001F) {
-            float target = authoritativeState == null
+            GunState heldState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
+            float target = !authoritativeMatchesHeldStack(heldState)
                     ? TARGET_PISTOL_FOV : authoritativeState.adsFovMultiplier();
-            float multiplier = Mth.lerp(easeInOutQuint(adsBlend), 1.0F, target);
+            float multiplier = Mth.lerp(easeInOutQuint(viewmodelAdsBlend()), 1.0F, target);
             event.setNewFovModifier(event.getNewFovModifier() * multiplier);
         }
     }
@@ -201,6 +304,24 @@ public final class ClientWeaponController {
                 + SuperbGunPresentationState.reloadCameraRoll() * reloadScale);
     }
 
+    private static void restoreHorizontalMomentum(Minecraft minecraft, double targetSpeed) {
+        Vec3 velocity = minecraft.player.getDeltaMovement();
+        double currentSpeed = velocity.horizontalDistance();
+        if (targetSpeed <= currentSpeed + 1.0E-6D) {
+            return;
+        }
+        Vec3 direction = currentSpeed > 1.0E-4D
+                ? new Vec3(velocity.x, 0.0D, velocity.z).normalize()
+                : new Vec3(minecraft.player.getLookAngle().x, 0.0D,
+                        minecraft.player.getLookAngle().z).normalize();
+        if (direction.lengthSqr() > 1.0E-8D) {
+            minecraft.player.setDeltaMovement(
+                    direction.x * targetSpeed,
+                    velocity.y,
+                    direction.z * targetSpeed);
+        }
+    }
+
     @SubscribeEvent
     public static void replaceVanillaCrosshair(RenderGuiLayerEvent.Pre event) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -216,8 +337,10 @@ public final class ClientWeaponController {
             return;
         }
         GuiGraphics graphics = event.getGuiGraphics();
-        renderCrosshair(graphics, minecraft);
-        if (authoritativeState == null) {
+        renderCrosshair(graphics, minecraft,
+                event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        GunState heldState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
+        if (!authoritativeMatchesHeldStack(heldState)) {
             return;
         }
         renderAmmoPanel(graphics, minecraft, authoritativeState.state());
@@ -236,11 +359,15 @@ public final class ClientWeaponController {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
             GunState local = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
-            if (local != null && local.stackIdentity().equals(payload.state().stackIdentity())) {
+            boolean matchesHeld = local != null
+                    && local.stackIdentity().equals(payload.state().stackIdentity());
+            if (matchesHeld) {
                 minecraft.player.getMainHandItem().set(HbmDataComponents.GUN_STATE.get(), payload.state());
             }
-            if (changedStack) {
-                triggerAnimation(minecraft.player, "equip");
+            if (changedStack && matchesHeld) {
+                if (!isHoldingTargetPistol(minecraft)) {
+                    triggerAnimation(minecraft.player, "equip");
+                }
                 SuperbGunPresentationState.beginEquip();
                 lastPresentationPose = null;
             }
@@ -255,11 +382,19 @@ public final class ClientWeaponController {
 
         boolean local = minecraft.player != null && payload.sourceEntityId() == minecraft.player.getId();
         boolean localFirstPerson = local && minecraft.options.getCameraType().isFirstPerson();
-        if (local && payload.effect() == WeaponEffectType.IMPACT) {
-            hitMarkerTicks = Math.max(hitMarkerTicks, 8);
-        } else if (local && payload.effect() == WeaponEffectType.HEADSHOT) {
-            hitMarkerTicks = Math.max(hitMarkerTicks, 10);
-            headshotMarkerTicks = Math.max(headshotMarkerTicks, 12);
+        if (local) {
+            switch (payload.effect()) {
+                case HIT -> HIT_FEEDBACK.start(HitFeedbackAnimation.Kind.HIT);
+                case HEADSHOT -> HIT_FEEDBACK.start(HitFeedbackAnimation.Kind.HEADSHOT);
+                case KILL -> HIT_FEEDBACK.start(HitFeedbackAnimation.Kind.KILL);
+                case HEADSHOT_KILL -> HIT_FEEDBACK.start(HitFeedbackAnimation.Kind.HEADSHOT_KILL);
+                default -> {
+                }
+            }
+        }
+        if (local && (payload.effect() == WeaponEffectType.FIRE
+                || payload.effect() == WeaponEffectType.DRY_FIRE)) {
+            SPRINT_FIRE.acknowledgeAttempt();
         }
         if (payload.effect() == WeaponEffectType.FIRE && local) {
             boolean alreadyPredicted = predictedRecoilPending;
@@ -284,6 +419,7 @@ public final class ClientWeaponController {
                 triggerAnimation(source, "dry_fire");
             }
             case RELOAD_START -> {
+                rememberThirdPersonReload(payload);
                 if (TARGET_PISTOL.equals(payload.gunId())) {
                     boolean empty = payload.variant() != 0;
                     triggerAnimation(source, empty ? "reload_empty" : "reload_normal");
@@ -308,20 +444,18 @@ public final class ClientWeaponController {
             }
         }
         switch (payload.effect()) {
+            // The first-person model renders its own muzzle flash. World-space flame particles
+            // were oversized and visibly detached from the pistol in third person.
             case MUZZLE_FLASH -> {
-                if (!localFirstPerson) {
-                    minecraft.level.addParticle(ParticleTypes.FLAME,
-                            payload.x(), payload.y(), payload.z(), 0.0D, 0.004D, 0.0D);
-                }
             }
             case SMOKE -> {
-                if (!localFirstPerson) {
+                if (localFirstPerson) {
                     minecraft.level.addParticle(ParticleTypes.SMOKE,
                             payload.x(), payload.y(), payload.z(), 0.0D, 0.025D, 0.0D);
                 }
             }
             case CASING -> {
-                if (HbmClientConfig.CASING_PARTICLES.get()) {
+                if (localFirstPerson && HbmClientConfig.CASING_PARTICLES.get()) {
                     Vec3 look = source == null ? new Vec3(0.0D, 0.0D, 1.0D) : source.getLookAngle();
                     Vec3 right = look.cross(new Vec3(0.0D, 1.0D, 0.0D));
                     if (right.lengthSqr() < 1.0E-6D) {
@@ -332,23 +466,29 @@ public final class ClientWeaponController {
                     Vec3 velocity = right.scale(0.11D)
                             .add(0.0D, 0.075D, 0.0D)
                             .subtract(look.scale(0.018D));
-                    minecraft.level.addParticle(
+                    Particle particle = minecraft.particleEngine.createParticle(
                             new ItemParticleOption(ParticleTypes.ITEM,
                                     HbmItems.CASING_SMALL.get().getDefaultInstance()),
                             payload.x(), payload.y(), payload.z(),
                             velocity.x, velocity.y, velocity.z);
+                    if (particle != null) {
+                        particle.scale(0.42F);
+                    }
                 }
             }
             case TRACER -> {
                 if (HbmClientConfig.TRACERS.get()) {
-                    minecraft.level.addParticle(ParticleTypes.END_ROD,
-                            payload.x(), payload.y(), payload.z(), 0.0D, 0.0D, 0.0D);
+                    HbmBulletTracerRenderer.enqueue(
+                            minecraft.level,
+                            new Vec3(payload.x(), payload.y(), payload.z()),
+                            new Vec3(payload.endX(), payload.endY(), payload.endZ()),
+                            source == null ? null : source.getEyePosition(),
+                            payload.variant(),
+                            local);
                 }
             }
             case IMPACT -> minecraft.level.addParticle(ParticleTypes.CRIT,
                     payload.x(), payload.y(), payload.z(), 0.0D, 0.0D, 0.0D);
-            case HEADSHOT -> minecraft.level.addParticle(ParticleTypes.ENCHANTED_HIT,
-                    payload.x(), payload.y(), payload.z(), 0.0D, 0.05D, 0.0D);
             case EXPLOSION -> minecraft.level.addParticle(ParticleTypes.EXPLOSION_EMITTER,
                     payload.x(), payload.y(), payload.z(), 0.0D, 0.0D, 0.0D);
             default -> {
@@ -404,10 +544,12 @@ public final class ClientWeaponController {
             if (sensitivityBeforeAds == null) {
                 sensitivityBeforeAds = minecraft.options.sensitivity().get();
             }
-            double targetMultiplier = (authoritativeState == null
+            GunState heldState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
+            double targetMultiplier = (!authoritativeMatchesHeldStack(heldState)
                     ? TARGET_PISTOL_SENSITIVITY : authoritativeState.adsSensitivityMultiplier())
                     * HbmClientConfig.ADS_SENSITIVITY_SCALE.get();
-            double multiplier = Mth.lerp(easeInOutQuint(adsBlend), 1.0D, targetMultiplier);
+            double multiplier = Mth.lerp(easeInOutQuint(viewmodelAdsBlend()),
+                    1.0D, targetMultiplier);
             minecraft.options.sensitivity().set(sensitivityBeforeAds * multiplier);
         } else if (sensitivityBeforeAds != null) {
             minecraft.options.sensitivity().set(sensitivityBeforeAds);
@@ -415,8 +557,36 @@ public final class ClientWeaponController {
         }
     }
 
-    private static void sendInput(WeaponInput input, boolean pressed) {
-        PacketDistributor.sendToServer(new WeaponInputPayload(input, pressed, nextSequence()));
+    private static void predictShot(Minecraft minecraft, GunState heldState) {
+        boolean predictedLiveRound = heldState == null || heldState.ammoCount() > 0;
+        if (predictedLiveRound) {
+            applyPredictedRecoil(minecraft);
+            SuperbGunPresentationState.fire();
+            triggerAnimation(minecraft.player, "fire");
+        } else {
+            triggerAnimation(minecraft.player, "dry_fire");
+        }
+        predictedAnimationTicks = 6;
+    }
+
+    private static void updateViewBobbing(Minecraft minecraft, boolean ads) {
+        if (ads) {
+            if (viewBobbingBeforeAds == null) {
+                viewBobbingBeforeAds = minecraft.options.bobView().get();
+            }
+            if (minecraft.options.bobView().get()) {
+                minecraft.options.bobView().set(false);
+            }
+        } else if (viewBobbingBeforeAds != null) {
+            minecraft.options.bobView().set(viewBobbingBeforeAds);
+            viewBobbingBeforeAds = null;
+        }
+    }
+
+    private static void sendInput(WeaponInput input, boolean pressed,
+                                  boolean sprintTransitionRequested) {
+        PacketDistributor.sendToServer(new WeaponInputPayload(
+                input, pressed, sprintTransitionRequested, nextSequence()));
     }
 
     private static void sendCommand(WeaponCommand command) {
@@ -450,38 +620,44 @@ public final class ClientWeaponController {
                 && TARGET_PISTOL.equals(gun.definitionId());
     }
 
-    private static void renderCrosshair(GuiGraphics graphics, Minecraft minecraft) {
-        if (!minecraft.options.getCameraType().isFirstPerson() || minecraft.player == null) {
+    private static boolean authoritativeMatchesHeldStack(GunState heldState) {
+        return heldState != null && authoritativeState != null
+                && heldState.stackIdentity().equals(authoritativeState.state().stackIdentity());
+    }
+
+    private static void renderCrosshair(GuiGraphics graphics, Minecraft minecraft,
+                                        float partialTick) {
+        if (minecraft.player == null
+                || minecraft.options.getCameraType() == CameraType.THIRD_PERSON_FRONT) {
             return;
         }
+        boolean firstPerson = minecraft.options.getCameraType().isFirstPerson();
         float currentAds = viewmodelAdsBlend();
-        if (!minecraft.player.isSprinting() && currentAds <= 0.20F) {
-            int centerX = graphics.guiWidth() / 2
-                    + Math.round(SuperbGunPresentationState.crosshairOffsetX());
-            int centerY = graphics.guiHeight() / 2
-                    + Math.round(SuperbGunPresentationState.crosshairOffsetY());
-            int gap = 3 + Math.round(2.8F * SuperbGunPresentationState.crosshairSpread());
-            int arm = 5;
+        if (!minecraft.player.isSprinting() && (!firstPerson || currentAds <= 0.20F)) {
+            // Hip fire remains centered on the authoritative camera ray. Movement changes
+            // bloom, not the reticle zero, so the visible crosshair and trajectory agree.
+            int centerX = graphics.guiWidth() / 2;
+            int centerY = graphics.guiHeight() / 2;
+            int gap = (firstPerson ? 3 : 5)
+                    + Math.round(2.8F * SuperbGunPresentationState.crosshairSpread());
+            int arm = firstPerson ? 5 : 4;
             int white = 0xEEFFFFFF;
             int shadow = 0xB0000000;
 
-            graphics.fill(centerX, centerY, centerX + 1, centerY + 1, white);
+            if (firstPerson) {
+                graphics.fill(centerX, centerY, centerX + 1, centerY + 1, white);
+            }
             horizontalLine(graphics, centerX - gap - arm, centerX - gap, centerY, shadow, white);
             horizontalLine(graphics, centerX + gap, centerX + gap + arm, centerY, shadow, white);
             verticalLine(graphics, centerX, centerY - gap - arm, centerY - gap, shadow, white);
             verticalLine(graphics, centerX, centerY + gap, centerY + gap + arm, shadow, white);
-        } else if (!minecraft.player.isSprinting()) {
-            // Preserve a restrained centre reference while the iron sights settle. The former
-            // hard disappearance made it impossible to distinguish aligned ADS from a bad pose.
-            int centerX = graphics.guiWidth() / 2;
-            int centerY = graphics.guiHeight() / 2;
-            graphics.fill(centerX, centerY, centerX + 1, centerY + 1, 0xB8FFFFFF);
         }
 
-        if (hitMarkerTicks > 0) {
-            drawHitMarker(graphics, graphics.guiWidth() / 2, graphics.guiHeight() / 2,
-                    headshotMarkerTicks > 0 ? 0xFFFFC95A : 0xFFFFFFFF);
-        }
+        int feedbackX = graphics.guiWidth() / 2;
+        int feedbackY = graphics.guiHeight() / 2 + (firstPerson
+                ? adsAimOffsetY(minecraft, graphics.guiHeight(), currentAds) : 0);
+        drawHitFeedback(graphics, feedbackX, feedbackY,
+                HIT_FEEDBACK.sample(partialTick));
     }
 
     private static void renderAmmoPanel(GuiGraphics graphics, Minecraft minecraft, GunState state) {
@@ -552,13 +728,60 @@ public final class ClientWeaponController {
         graphics.fill(x, y1, x + 1, y2, color);
     }
 
-    private static void drawHitMarker(GuiGraphics graphics, int centerX, int centerY, int color) {
-        for (int step = 3; step <= 7; step++) {
-            graphics.fill(centerX - step, centerY - step, centerX - step + 1, centerY - step + 1, color);
-            graphics.fill(centerX + step, centerY - step, centerX + step + 1, centerY - step + 1, color);
-            graphics.fill(centerX - step, centerY + step, centerX - step + 1, centerY + step + 1, color);
-            graphics.fill(centerX + step, centerY + step, centerX + step + 1, centerY + step + 1, color);
+    private static void drawHitFeedback(GuiGraphics graphics, int centerX, int centerY,
+                                        HitFeedbackAnimation.Frame frame) {
+        if (frame.kind() == HitFeedbackAnimation.Kind.NONE || frame.alpha() <= 0.01F) {
+            return;
         }
+        int gap = 3 + Math.round(5.0F * frame.expansion());
+        int alpha = Mth.clamp(Math.round(frame.alpha() * 255.0F), 0, 255);
+        int rgb = switch (frame.kind()) {
+            case HIT, HEADSHOT -> 0xFFFFFF;
+            case KILL, HEADSHOT_KILL -> 0xFF2525;
+            case NONE -> 0;
+        };
+        int color = alpha << 24 | rgb;
+        int shadow = Math.round(alpha * 0.45F) << 24;
+        for (int step = gap; step < gap + frame.armLength(); step++) {
+            pixel(graphics, centerX - step, centerY - step, shadow, color);
+            pixel(graphics, centerX + step, centerY - step, shadow, color);
+            pixel(graphics, centerX - step, centerY + step, shadow, color);
+            pixel(graphics, centerX + step, centerY + step, shadow, color);
+        }
+        if (frame.kind() == HitFeedbackAnimation.Kind.HEADSHOT
+                || frame.kind() == HitFeedbackAnimation.Kind.HEADSHOT_KILL) {
+            int plus = alpha << 24 | 0xFF2525;
+            // Four separated strokes form the inner headshot plus without reintroducing the
+            // former center dot.
+            graphics.fill(centerX - 3, centerY, centerX, centerY + 1, plus);
+            graphics.fill(centerX + 1, centerY, centerX + 4, centerY + 1, plus);
+            graphics.fill(centerX, centerY - 3, centerX + 1, centerY, plus);
+            graphics.fill(centerX, centerY + 1, centerX + 1, centerY + 4, plus);
+        }
+    }
+
+    private static void pixel(GuiGraphics graphics, int x, int y, int shadow, int color) {
+        graphics.fill(x - 1, y - 1, x + 2, y + 2, shadow);
+        graphics.fill(x, y, x + 1, y + 1, color);
+    }
+
+    private static int adsAimOffsetY(Minecraft minecraft, int guiHeight, float adsAmount) {
+        if (minecraft.player == null || adsAmount <= 0.001F) {
+            return 0;
+        }
+        ItemStack stack = minecraft.player.getMainHandItem();
+        if (!(stack.getItem() instanceof HbmGunItem gun)) {
+            return 0;
+        }
+        GunDefinition definition = GunDefinitionRegistry.gun(gun.definitionId());
+        if (definition == null) {
+            return 0;
+        }
+        double zeroPitch = definition.getAds().getZeroPitchDegrees() * adsAmount;
+        double baseFov = minecraft.options.fov().get();
+        double currentFov = Mth.lerp(adsAmount, baseFov,
+                baseFov * definition.getAds().getFovMultiplier());
+        return WeaponAim.screenOffsetY(zeroPitch, currentFov, guiHeight);
     }
 
     private static boolean shouldLowerAtWall(Minecraft minecraft) {
@@ -570,7 +793,12 @@ public final class ClientWeaponController {
     }
 
     public static float viewmodelAdsBlend() {
-        return (previousAdsBlend + adsBlend) * 0.5F;
+        return viewmodelAdsBlend(Minecraft.getInstance().getTimer()
+                .getGameTimeDeltaPartialTick(true));
+    }
+
+    public static float viewmodelAdsBlend(float partialTick) {
+        return Mth.lerp(Mth.clamp(partialTick, 0.0F, 1.0F), previousAdsBlend, adsBlend);
     }
 
     public static float viewmodelRecoilPitch() {
@@ -582,7 +810,37 @@ public final class ClientWeaponController {
     }
 
     public static boolean reloadIdle() {
-        return authoritativeState == null || authoritativeState.reloadPhase() == ReloadPhase.IDLE;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!isHoldingGun(minecraft)) {
+            return true;
+        }
+        GunState heldState = minecraft.player.getMainHandItem().get(HbmDataComponents.GUN_STATE.get());
+        return !authoritativeMatchesHeldStack(heldState)
+                || authoritativeState.reloadPhase() == ReloadPhase.IDLE;
+    }
+
+    public static boolean thirdPersonReloading(LivingEntity entity) {
+        if (entity == null || entity.level() == null) {
+            return false;
+        }
+        Long until = THIRD_PERSON_RELOAD_UNTIL.get(entity.getId());
+        return until != null && until >= entity.level().getGameTime();
+    }
+
+    private static void rememberThirdPersonReload(WeaponEffectPayload payload) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || payload.sourceEntityId() < 0) {
+            return;
+        }
+        GunDefinition definition = GunDefinitionRegistry.gun(payload.gunId());
+        if (definition == null) {
+            return;
+        }
+        GunDefinition.ReloadProfile reload = definition.getReload();
+        int ending = payload.variant() != 0 ? reload.getEmptyEndTicks() : reload.getEndTicks();
+        int duration = Math.max(1, reload.getStartTicks() + reload.getTransferTicks() + ending);
+        THIRD_PERSON_RELOAD_UNTIL.put(payload.sourceEntityId(),
+                minecraft.level.getGameTime() + duration);
     }
 
     private static float easeInOutQuint(float value) {

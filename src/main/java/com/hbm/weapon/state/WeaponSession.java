@@ -5,6 +5,8 @@ import java.util.UUID;
 /** Server-only state for the weapon currently controlled by a player. */
 public final class WeaponSession {
     private static final int MAX_PACKETS_PER_TICK = 8;
+    public static final int SPRINT_FIRE_SETTLE_TICKS = 3;
+    public static final int SPRINT_FIRE_RECOVERY_TICKS = 4;
 
     private boolean triggerHeld;
     private boolean adsHeld;
@@ -15,6 +17,9 @@ public final class WeaponSession {
     private int acknowledgedSequence = -1;
     private UUID heldStackIdentity;
     private int burstRemaining;
+    private boolean sprintFirePending;
+    private int sprintFireDelayTicks;
+    private int sprintFireRecoveryTicks;
     private long packetTick = Long.MIN_VALUE;
     private int packetsThisTick;
 
@@ -130,6 +135,58 @@ public final class WeaponSession {
         burstRemaining = Math.max(0, burstRemaining - 1);
     }
 
+    /**
+     * Queues one deliberate shot after sprint has been interrupted. The server owns this
+     * delay so a client cannot collapse the sprint-to-fire transition through packet order.
+     */
+    public void queueSprintFire(int delayTicks) {
+        sprintFirePending = true;
+        sprintFireDelayTicks = Math.max(0, delayTicks);
+        sprintFireRecoveryTicks = 0;
+    }
+
+    public boolean sprintFirePending() {
+        return sprintFirePending;
+    }
+
+    /** Returns true while the queued shot must remain blocked for this tick. */
+    public boolean holdSprintFireDelay() {
+        if (!sprintFirePending || sprintFireDelayTicks <= 0) {
+            return false;
+        }
+        sprintFireDelayTicks--;
+        return true;
+    }
+
+    /** Completes the queued shot, then keeps sprint disabled while the raised weapon recovers. */
+    public void completeSprintFire(int recoveryTicks) {
+        clearSprintFireInput();
+        sprintFireRecoveryTicks = Math.max(0, recoveryTicks);
+    }
+
+    /** Returns true while sprint must remain disabled after the transition shot. */
+    public boolean holdSprintFireRecovery() {
+        if (sprintFireRecoveryTicks <= 0) {
+            return false;
+        }
+        sprintFireRecoveryTicks--;
+        return true;
+    }
+
+    /** Cancels the transition completely, including its post-shot recovery. */
+    public void clearSprintFire() {
+        clearSprintFireInput();
+        sprintFireRecoveryTicks = 0;
+    }
+
+    private void clearSprintFireInput() {
+        sprintFirePending = false;
+        sprintFireDelayTicks = 0;
+        triggerHeld = false;
+        semiQueued = false;
+        burstRemaining = 0;
+    }
+
     public void cancelActions() {
         triggerHeld = false;
         adsHeld = false;
@@ -137,6 +194,9 @@ public final class WeaponSession {
         reloadPhase = ReloadPhase.IDLE;
         actionTicks = 0;
         burstRemaining = 0;
+        sprintFirePending = false;
+        sprintFireDelayTicks = 0;
+        sprintFireRecoveryTicks = 0;
     }
 
     public void reset() {

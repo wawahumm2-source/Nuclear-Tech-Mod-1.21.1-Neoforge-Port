@@ -8,8 +8,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$gradle = Join-Path $root "gradlew.bat"
+. (Join-Path $PSScriptRoot 'gradle-bootstrap.ps1')
+$gradle = Get-HbmGradleCommand -ProjectRoot $root
 $validateParity = Join-Path $PSScriptRoot "validate-parity.ps1"
+$validateWeapons = Join-Path $PSScriptRoot "validate-weapons.ps1"
 $serverSmoke = Join-Path $PSScriptRoot "server-smoke.ps1"
 $localJavaCandidates = @(
     (Join-Path $root ".tooling\jdk-21\jdk-21.0.11+10"),
@@ -21,7 +23,9 @@ $logPaths = @(
     (Join-Path $root "run-client-smoke\logs\latest.log"),
     (Join-Path $root "run-client-smoke\logs\debug.log"),
     (Join-Path $root "run-client-verification\logs\latest.log"),
-    (Join-Path $root "run-client-verification\logs\debug.log")
+    (Join-Path $root "run-client-verification\logs\debug.log"),
+    (Join-Path $root "run-client-comparison\logs\latest.log"),
+    (Join-Path $root "run-client-comparison\logs\debug.log")
 )
 $warningPatterns = @(
     "missing texture",
@@ -49,6 +53,16 @@ function Invoke-Step([string]$Name, [scriptblock]$Step) {
 
 Invoke-Step "Parity resource validation" {
     & $validateParity
+    if (-not $?) {
+        throw "Parity resource validation failed."
+    }
+}
+
+Invoke-Step "Weapon definition and asset validation" {
+    & $validateWeapons
+    if (-not $?) {
+        throw "Weapon definition and asset validation failed."
+    }
 }
 
 if (-not $SkipGradle) {
@@ -59,16 +73,23 @@ if (-not $SkipGradle) {
     }
 
     Invoke-Step "Gradle build" {
-        & $gradle build
+        & $gradle --no-daemon build
         if ($LASTEXITCODE -ne 0) {
             throw "Gradle build failed with exit code $LASTEXITCODE."
         }
     }
 
     Invoke-Step "Data generation" {
-        & $gradle runData
+        & $gradle --no-daemon runData
         if ($LASTEXITCODE -ne 0) {
             throw "Data generation failed with exit code $LASTEXITCODE."
+        }
+    }
+
+    Invoke-Step "GameTest server" {
+        & $gradle --no-daemon gameTestServer
+        if ($LASTEXITCODE -ne 0) {
+            throw "GameTest server failed with exit code $LASTEXITCODE."
         }
     }
 }

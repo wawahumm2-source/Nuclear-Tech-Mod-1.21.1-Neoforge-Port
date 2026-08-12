@@ -33,7 +33,10 @@ object WeaponDefinitionParser {
         require(defaultMode in modes) { "default_fire_mode must appear in fire_modes" }
 
         val ads = json.requiredObject("ads")
-        requireOnly(ads, setOf("fov_multiplier", "movement_multiplier", "sensitivity_multiplier"))
+        requireOnly(ads, setOf(
+            "fov_multiplier", "movement_multiplier", "sensitivity_multiplier",
+            "zero_pitch_degrees", "zero_distance"
+        ))
         val spread = json.requiredObject("spread")
         requireOnly(spread, setOf("hip_degrees", "ads_degrees", "movement_degrees"))
         val recoil = json.requiredObject("recoil")
@@ -58,7 +61,9 @@ object WeaponDefinitionParser {
             ads = GunDefinition.AdsProfile(
                 ads.requiredDouble("fov_multiplier"),
                 ads.requiredDouble("movement_multiplier"),
-                ads.requiredDouble("sensitivity_multiplier")
+                ads.requiredDouble("sensitivity_multiplier"),
+                ads.optionalDouble("zero_pitch_degrees", 0.0),
+                ads.optionalDouble("zero_distance", 0.0)
             ),
             movementWeight = json.requiredDouble("movement_weight"),
             spread = GunDefinition.SpreadProfile(
@@ -141,6 +146,10 @@ object WeaponDefinitionParser {
         require(definition.ads.fovMultiplier in 0.05..1.0) { "ads.fov_multiplier must be between 0.05 and 1" }
         require(definition.ads.movementMultiplier in 0.05..1.0) { "ads.movement_multiplier must be between 0.05 and 1" }
         require(definition.ads.sensitivityMultiplier in 0.05..1.0) { "ads.sensitivity_multiplier must be between 0.05 and 1" }
+        require(definition.ads.zeroPitchDegrees in -10.0..10.0) { "ads.zero_pitch_degrees must be between -10 and 10" }
+        require(definition.ads.zeroDistance in 0.0..definition.maxRange) {
+            "ads.zero_distance must be zero or no greater than range"
+        }
         require(definition.spread.hipDegrees >= 0.0 && definition.spread.adsDegrees >= 0.0) { "spread cannot be negative" }
         require(definition.recoil.pitch >= 0.0 && definition.recoil.yaw >= 0.0) { "recoil cannot be negative" }
         require(definition.reload.startTicks >= 0 && definition.reload.transferTicks >= 0 &&
@@ -250,6 +259,9 @@ object WeaponDefinitionParser {
         require(value.isFinite()) { "$name must be finite" }
         return value
     }
+
+    private fun JsonObject.optionalDouble(name: String, fallback: Double): Double =
+        if (has(name)) requiredDouble(name) else fallback
 
     private fun JsonObject.requiredBoolean(name: String): Boolean =
         get(name)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }?.asBoolean

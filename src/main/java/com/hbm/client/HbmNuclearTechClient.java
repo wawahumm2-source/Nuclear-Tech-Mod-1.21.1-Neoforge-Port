@@ -10,6 +10,9 @@ import com.hbm.client.render.BurnerPressRenderer;
 import com.hbm.client.render.BurnerPressItemRenderer;
 import com.hbm.client.screen.BurnerPressScreen;
 import com.hbm.client.weapon.render.ObjBakedGeoModelLoader;
+import com.hbm.client.weapon.render.HbmBulletTracerRenderer;
+import com.hbm.client.weapon.HbmGunArmPose;
+import com.hbm.client.weapon.ClientWeaponController;
 import com.hbm.network.HbmPayloads;
 import com.hbm.registry.HbmBlockEntities;
 import com.hbm.registry.HbmBlocks;
@@ -57,6 +60,7 @@ public final class HbmNuclearTechClient {
         NeoForge.EVENT_BUS.addListener(RadiationInspectorOverlay::render);
         NeoForge.EVENT_BUS.addListener(NuclearVisualEffectManager::tick);
         NeoForge.EVENT_BUS.addListener(NuclearVisualEffectManager::render);
+        NeoForge.EVENT_BUS.addListener(HbmBulletTracerRenderer::render);
         NeoForge.EVENT_BUS.addListener(NuclearPresentationOverlay::beforeGui);
         NeoForge.EVENT_BUS.addListener(NuclearPresentationOverlay::render);
         NeoForge.EVENT_BUS.addListener(NuclearPresentationOverlay::applyCameraShake);
@@ -133,6 +137,25 @@ public final class HbmNuclearTechClient {
                 return itemRenderer;
             }
         }, HbmItems.BURNER_PRESS.get());
+        IClientItemExtensions gunExtensions = new IClientItemExtensions() {
+            @Override
+            public net.minecraft.client.model.HumanoidModel.ArmPose getArmPose(
+                    net.minecraft.world.entity.LivingEntity entity,
+                    net.minecraft.world.InteractionHand hand,
+                    net.minecraft.world.item.ItemStack stack) {
+                if (hand == net.minecraft.world.InteractionHand.OFF_HAND) {
+                    return net.minecraft.client.model.HumanoidModel.ArmPose.EMPTY;
+                }
+                return HbmGunArmPose.select(
+                        ClientWeaponController.thirdPersonReloading(entity),
+                        entity.isSprinting(), entity.onGround());
+            }
+        };
+        event.registerItem(gunExtensions,
+                HbmItems.GUN_STAR_F.get(),
+                HbmItems.GUN_STG77.get(),
+                HbmItems.GUN_SPAS12.get(),
+                HbmItems.GUN_CONGOLAKE.get());
         event.registerFluidType(new IClientFluidTypeExtensions() {
             private static final ResourceLocation STILL = ResourceLocation.fromNamespaceAndPath(
                     "minecraft", "block/water_still");

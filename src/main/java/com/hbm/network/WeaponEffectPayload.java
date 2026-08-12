@@ -13,6 +13,9 @@ public record WeaponEffectPayload(
         double x,
         double y,
         double z,
+        double endX,
+        double endY,
+        double endZ,
         float yaw,
         float pitch,
         int sourceEntityId,
@@ -28,6 +31,9 @@ public record WeaponEffectPayload(
                 buffer.writeDouble(payload.x());
                 buffer.writeDouble(payload.y());
                 buffer.writeDouble(payload.z());
+                buffer.writeDouble(payload.endX());
+                buffer.writeDouble(payload.endY());
+                buffer.writeDouble(payload.endZ());
                 buffer.writeFloat(payload.yaw());
                 buffer.writeFloat(payload.pitch());
                 buffer.writeVarInt(payload.sourceEntityId());
@@ -40,11 +46,31 @@ public record WeaponEffectPayload(
                     buffer.readDouble(),
                     buffer.readDouble(),
                     buffer.readDouble(),
+                    buffer.readDouble(),
+                    buffer.readDouble(),
+                    buffer.readDouble(),
                     buffer.readFloat(),
                     buffer.readFloat(),
                     buffer.readVarInt(),
                     buffer.readVarInt())
     );
+
+    /** Point-effect convenience constructor. Tracers use the canonical segment constructor. */
+    public WeaponEffectPayload(
+            WeaponEffectType effect,
+            ResourceLocation gunId,
+            ResourceLocation resource,
+            double x,
+            double y,
+            double z,
+            float yaw,
+            float pitch,
+            int sourceEntityId,
+            int variant
+    ) {
+        this(effect, gunId, resource, x, y, z, x, y, z,
+                yaw, pitch, sourceEntityId, variant);
+    }
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

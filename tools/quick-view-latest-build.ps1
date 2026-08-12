@@ -6,7 +6,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$gradleWrapper = Join-Path $projectRoot "gradlew.bat"
+. (Join-Path $PSScriptRoot 'gradle-bootstrap.ps1')
+$gradleCommand = Get-HbmGradleCommand -ProjectRoot $projectRoot
 $buildLibs = Join-Path $projectRoot "build\libs"
 $comparisonGameDirectory = Join-Path $projectRoot "run-client-comparison"
 $comparisonModsDirectory = Join-Path $comparisonGameDirectory "mods"
@@ -155,9 +156,9 @@ if (!$javaExe) {
 }
 $javaHome = Split-Path -Parent (Split-Path -Parent $javaExe)
 
-if (!(Test-Path $gradleWrapper)) {
-    Write-Host "Gradle wrapper was not found at:" -ForegroundColor Red
-    Write-Host "  $gradleWrapper"
+if (!(Test-Path $gradleCommand)) {
+    Write-Host "Gradle command was not found at:" -ForegroundColor Red
+    Write-Host "  $gradleCommand"
     exit 1
 }
 
@@ -175,6 +176,7 @@ Write-Host ""
 Write-Host "HBM Nuclear Tech - Quick View Latest Build" -ForegroundColor Cyan
 Write-Host "Project: $projectRoot"
 Write-Host "Java:    $javaHome"
+Write-Host "Gradle:  $gradleCommand"
 Write-Host "Compare: Superb Warfare 0.8.9, commit 9b5284f4"
 Write-Host "Source:  $superbJar"
 
@@ -195,7 +197,7 @@ $env:PATH = "$javaHome\bin;$env:PATH"
 if ($RebuildFirst -or !$latestJar) {
     Write-Host ""
     Write-Host "Building latest jar..." -ForegroundColor Cyan
-    & $gradleWrapper build
+    & $gradleCommand --no-daemon build
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -209,5 +211,5 @@ Write-Host "Comparison directory: $comparisonGameDirectory"
 Write-Host "Close Minecraft when you are finished reviewing the build."
 Write-Host ""
 
-& $gradleWrapper runClientComparison
+& $gradleCommand --no-daemon runClientComparison
 exit $LASTEXITCODE

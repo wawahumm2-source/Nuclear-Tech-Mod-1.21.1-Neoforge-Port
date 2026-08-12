@@ -35,7 +35,11 @@ data class GunDefinition(
     data class AdsProfile(
         val fovMultiplier: Double,
         val movementMultiplier: Double,
-        val sensitivityMultiplier: Double
+        val sensitivityMultiplier: Double,
+        /** Positive values pitch the authoritative shot below camera centre to match the irons. */
+        val zeroPitchDegrees: Double,
+        /** Distance in blocks where gravity-compensated ADS fire crosses the sight line. */
+        val zeroDistance: Double
     )
 
     data class SpreadProfile(

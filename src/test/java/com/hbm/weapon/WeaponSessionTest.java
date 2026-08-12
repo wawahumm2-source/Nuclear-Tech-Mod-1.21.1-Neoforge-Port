@@ -71,4 +71,42 @@ class WeaponSessionTest {
 
         assertEquals(650, shots);
     }
+
+    @Test
+    void sprintFireWaitsThreeFullTicksAndSurvivesTriggerRelease() {
+        WeaponSession session = new WeaponSession();
+        session.setTriggerHeld(true);
+        session.queueSprintFire(WeaponSession.SPRINT_FIRE_SETTLE_TICKS);
+        session.setTriggerHeld(false);
+
+        assertTrue(session.sprintFirePending());
+        assertTrue(session.holdSprintFireDelay());
+        assertTrue(session.holdSprintFireDelay());
+        assertTrue(session.holdSprintFireDelay());
+        assertFalse(session.holdSprintFireDelay());
+        assertTrue(session.consumeSemiQueued());
+
+        session.completeSprintFire(WeaponSession.SPRINT_FIRE_RECOVERY_TICKS);
+        assertFalse(session.sprintFirePending());
+        assertFalse(session.triggerHeld());
+        assertFalse(session.consumeSemiQueued());
+        for (int tick = 0; tick < WeaponSession.SPRINT_FIRE_RECOVERY_TICKS; tick++) {
+            assertTrue(session.holdSprintFireRecovery());
+        }
+        assertFalse(session.holdSprintFireRecovery());
+    }
+
+    @Test
+    void weaponSwapCancelsQueuedSprintFire() {
+        WeaponSession session = new WeaponSession();
+        session.bind(UUID.randomUUID());
+        session.setTriggerHeld(true);
+        session.queueSprintFire(WeaponSession.SPRINT_FIRE_SETTLE_TICKS);
+
+        session.bind(UUID.randomUUID());
+
+        assertFalse(session.sprintFirePending());
+        assertFalse(session.triggerHeld());
+        assertFalse(session.consumeSemiQueued());
+    }
 }

@@ -14,6 +14,7 @@ import com.hbm.registry.HbmDataComponents;
 import com.hbm.weapon.ammo.AmmoSource;
 import com.hbm.weapon.ammo.AmmoSources;
 import com.hbm.weapon.behavior.GunBehaviorRegistry;
+import com.hbm.weapon.ballistics.WeaponAim;
 import com.hbm.weapon.data.AmmoDefinition;
 import com.hbm.weapon.data.FireMode;
 import com.hbm.weapon.data.GunDefinition;
@@ -66,11 +67,29 @@ public final class HbmWeaponService {
         HeldGun held = resolved.get();
         session.bind(held.state().stackIdentity());
         if (payload.input() == WeaponInput.ADS) {
-            session.setAdsHeld(payload.pressed() && !player.isSprinting());
-        } else if (payload.input() == WeaponInput.FIRE) {
-            session.setTriggerHeld(payload.pressed());
             if (payload.pressed()) {
+                // ADS is authoritative over sprint. Waiting for a later movement packet here
+                // made the first ADS press disappear whenever the player was running.
                 player.setSprinting(false);
+            }
+            session.setAdsHeld(payload.pressed());
+        } else if (payload.input() == WeaponInput.FIRE) {
+            if (!payload.pressed()) {
+                // Releasing LMB stops sustained fire, but a deliberate click made during the
+                // sprint transition remains queued as one shot.
+                session.setTriggerHeld(false);
+            } else if (shouldQueueSprintFire(
+                    session.adsHeld(), player.isSprinting(), payload.sprintTransitionRequested())) {
+                player.setSprinting(false);
+                session.setTriggerHeld(true);
+                session.queueSprintFire(WeaponSession.SPRINT_FIRE_SETTLE_TICKS);
+            } else {
+                if (session.adsHeld()) {
+                    // Movement packets may momentarily restore sprint while Ctrl remains held.
+                    // ADS has priority and must never inherit the hipfire sprint delay.
+                    player.setSprinting(false);
+                }
+                session.setTriggerHeld(true);
             }
         }
         syncState(player, held.stack(), session);
@@ -115,16 +134,27 @@ public final class HbmWeaponService {
         if (session.bind(held.state().stackIdentity())) {
             syncState(player, held.stack(), session);
         }
-        if (player.isSprinting()) {
-            session.setAdsHeld(false);
+        if (session.adsHeld() && player.isSprinting()) {
+            player.setSprinting(false);
         }
         applyMovementWeight(player, held.definition(), session.adsHeld());
         session.tickCooldown();
         coolWeapon(held);
+        if (session.holdSprintFireRecovery()) {
+            player.setSprinting(false);
+        }
 
         if (session.reloadPhase() != ReloadPhase.IDLE) {
             tickReload(player, held, session);
             return;
+        }
+        if (session.sprintFirePending()) {
+            // Keep the player in walk/hipfire until the server-owned settle delay expires.
+            // ADS may remain active here; physical Ctrl state never blocks it.
+            player.setSprinting(false);
+            if (session.holdSprintFireDelay()) {
+                return;
+            }
         }
         tickTrigger(player, held, session);
     }
@@ -135,12 +165,22 @@ public final class HbmWeaponService {
     }
 
     private static void tickTrigger(ServerPlayer player, HeldGun held, WeaponSession session) {
+        if (session.adsHeld() && player.isSprinting()) {
+            player.setSprinting(false);
+        }
+        if (!triggerAllowed(player.isSprinting(), session.adsHeld())) {
+            session.setTriggerHeld(false);
+            session.consumeSemiQueued();
+            session.beginBurst(0);
+            return;
+        }
         if (session.cooldownTicks() > 0.0D) {
             return;
         }
 
         FireMode mode = held.state().fireMode();
-        boolean shouldFire = switch (mode) {
+        boolean sprintTransitionShot = session.sprintFirePending();
+        boolean shouldFire = sprintTransitionShot ? session.consumeSemiQueued() : switch (mode) {
             case SEMI -> session.consumeSemiQueued();
             case AUTO -> session.triggerHeld();
             case BURST -> {
@@ -151,6 +191,9 @@ public final class HbmWeaponService {
             }
         };
         if (!shouldFire) {
+            if (sprintTransitionShot) {
+                session.clearSprintFire();
+            }
             return;
         }
 
@@ -159,6 +202,13 @@ public final class HbmWeaponService {
             if (mode == FireMode.BURST) {
                 session.beginBurst(0);
             }
+            if (sprintTransitionShot) {
+                session.completeSprintFire(WeaponSession.SPRINT_FIRE_RECOVERY_TICKS);
+            }
+            return;
+        }
+        if (sprintTransitionShot) {
+            session.completeSprintFire(WeaponSession.SPRINT_FIRE_RECOVERY_TICKS);
             return;
         }
         if (mode == FireMode.BURST) {
@@ -191,7 +241,13 @@ public final class HbmWeaponService {
         ).withHeatAndDurability(state.heat() + 1.0F, state.durability() + 1);
         held.stack().set(HbmDataComponents.GUN_STATE.get(), firedState);
 
-        Vec3 look = player.getLookAngle().normalize();
+        Vec3 look = session.adsHeld()
+                ? WeaponAim.zeroedDirection(
+                        player.getXRot(), player.getYRot(),
+                        held.definition().getAds().getZeroPitchDegrees(),
+                        held.definition().getAds().getZeroDistance(),
+                        held.definition().getMuzzleVelocity(), ammo.getGravity(), ammo.getDrag())
+                : WeaponAim.direction(player.getXRot(), player.getYRot(), 0.0D);
         Vec3 origin = player.getEyePosition().add(look.scale(0.45D));
         double movement = player.getDeltaMovement().horizontalDistance();
         double spread = session.adsHeld()
@@ -244,6 +300,9 @@ public final class HbmWeaponService {
             return;
         }
         session.setTriggerHeld(false);
+        session.clearSprintFire();
+        session.setAdsHeld(false);
+        player.setSprinting(false);
         session.setReload(ReloadPhase.START, held.definition().getReload().getStartTicks());
         ResourceLocation sound = soundFor(held.definition(), "reload_remove", "reload");
         playSound(player, sound, 0.8F, 1.0F);
@@ -455,6 +514,19 @@ public final class HbmWeaponService {
     private static void emit(ServerPlayer player, GunDefinition gun, WeaponEffectType effect,
                              ResourceLocation resource, float yaw, float pitch, int variant) {
         emit(player, gun, effect, resource, yaw, pitch, variant, player.getEyePosition());
+    }
+
+    static boolean triggerAllowed(boolean sprinting) {
+        return triggerAllowed(sprinting, false);
+    }
+
+    static boolean triggerAllowed(boolean sprinting, boolean adsHeld) {
+        return adsHeld || !sprinting;
+    }
+
+    static boolean shouldQueueSprintFire(boolean adsHeld, boolean sprinting,
+                                         boolean transitionRequested) {
+        return !adsHeld && (sprinting || transitionRequested);
     }
 
     private static void emit(ServerPlayer player, GunDefinition gun, WeaponEffectType effect,

@@ -67,6 +67,7 @@ final class HbmPlayerArmRenderer {
 
     private static void configure(ModelPart part, GeoBone bone) {
         part.visible = true;
+        // Exact setupModelFromBone2 transform used by Superb Warfare's MP-443.
         part.setPos(bone.getPivotX(), bone.getPivotY() + 7.0F, bone.getPivotZ());
         part.xRot = 0.0F;
         part.yRot = (float) Math.PI;

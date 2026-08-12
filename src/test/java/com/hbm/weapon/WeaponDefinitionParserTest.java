@@ -24,6 +24,16 @@ class WeaponDefinitionParserTest {
         GunDefinition.ReloadProfile pistolReload = WeaponTestFixtures.gun("gun_star_f").getReload();
         assertEquals(20, pistolReload.getEndTicks());
         assertEquals(28, pistolReload.getEmptyEndTicks());
+        assertEquals(0.65D, WeaponTestFixtures.gun("gun_star_f")
+                .getAds().getZeroPitchDegrees(), 1.0E-9D);
+        assertEquals(50.0D, WeaponTestFixtures.gun("gun_star_f")
+                .getAds().getZeroDistance(), 1.0E-9D);
+        assertEquals(16.0D, WeaponTestFixtures.gun("gun_star_f")
+                .getMuzzleVelocity(), 1.0E-9D);
+        assertEquals(500.0D, WeaponTestFixtures.gun("gun_star_f")
+                .getMaxRange(), 1.0E-9D);
+        assertEquals(1.8F, WeaponTestFixtures.gun("gun_star_f")
+                .getHeadshotMultiplier(), 1.0E-6F);
     }
 
     @Test
